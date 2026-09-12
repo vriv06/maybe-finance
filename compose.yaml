@@ -1,0 +1,118 @@
+# ===========================================================================
+# Example Docker Compose file
+# ===========================================================================
+#
+# Purpose:
+# --------
+#
+# This file is an example Docker Compose configuration for self hosting
+# Maybe on your local machine or on a cloud VPS.
+#
+# The configuration below is a "standard" setup that works out of the box,
+# but if you're running this outside of a local network, it is recommended
+# to set the environment variables for extra security.
+#
+# Setup:
+# ------
+#
+# To run this, you should read the setup guide:
+#
+# https://github.com/maybe-finance/maybe/blob/main/docs/hosting/docker.md
+#
+# Troubleshooting:
+# ----------------
+#
+# If you run into problems, you should open a Discussion here:
+#
+# https://github.com/maybe-finance/maybe/discussions/categories/general
+#
+
+x-db-env: &db_env
+  POSTGRES_USER: ${POSTGRES_USER:-maybe_user}
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-maybe_password}
+  POSTGRES_DB: ${POSTGRES_DB:-maybe_production}
+
+x-rails-env: &rails_env
+  <<: *db_env
+  SECRET_KEY_BASE: ${SECRET_KEY_BASE:-9c443b277f405bacd8f8df14eb5fe14569dd8b5369f96396e5a99f5bf5fd5eb62e83ac3a10e728e55d94a1d33ee3e46e8307758809d88a892731e9d8d2d9c56c}
+  SELF_HOSTED: "true"
+  RAILS_FORCE_SSL: "false"
+  RAILS_ASSUME_SSL: "false"
+  DB_HOST: db
+  DB_PORT: 5432
+  REDIS_URL: redis://redis:6379/1
+# NOTE: enabling OpenAI will incur costs when you use AI-related features in the app (chat, rules).  Make sure you have set appropriate spend limits on your account before adding this.
+  OPENAI_ACCESS_TOKEN: ${OPENAI_ACCESS_TOKEN}
+  SYNTH_API_KEY: ${SYNTH_API_KEY}
+  PLAID_CLIENT_ID: ${PLAID_CLIENT_ID}
+  PLAID_SECRET: ${PLAID_SECRET}
+  PLAID_ENV: ${PLAID_ENV}
+  PLAID_EU_CLIENT_ID: ${PLAID_EU_CLIENT_ID}
+  PLAID_EU_SECRET: ${PLAID_EU_SECRET}
+
+services:
+  web:
+    build: .
+    volumes:
+      - app-storage:/rails/storage
+    ports:
+      - 3000:3000
+    restart: unless-stopped
+    environment:
+      <<: *rails_env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - maybe_net
+
+  worker:
+    build: .
+    command: bundle exec sidekiq
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    environment:
+      <<: *rails_env
+    networks:
+      - maybe_net
+
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      <<: *db_env
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - maybe_net
+
+  redis:
+    image: redis:latest
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - maybe_net
+
+volumes:
+  app-storage:
+  postgres-data:
+  redis-data:
+
+networks:
+  maybe_net:
+    driver: bridge

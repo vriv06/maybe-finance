@@ -40,6 +40,11 @@ class Provider::Registry
         Provider::Synth.new(api_key)
       end
 
+      # Free fallback exchange rate provider, used when Synth isn't configured (e.g. self-hosted)
+      def frankfurter
+        Provider::Frankfurter.new
+      end
+
       def plaid_us
         config = Rails.application.config.plaid
 
@@ -92,7 +97,7 @@ class Provider::Registry
     def available_providers
       case concept
       when :exchange_rates
-        %i[synth]
+        %i[synth frankfurter]
       when :securities
         %i[synth]
       when :llm
