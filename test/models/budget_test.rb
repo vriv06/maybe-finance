@@ -85,4 +85,75 @@ class BudgetTest < ActiveSupport::TestCase
 
     assert_not_nil budget.previous_budget_param
   end
+
+  test "name and param are keyed off end_date, not start_date" do
+    budget = Budget.create!(
+      family: @family,
+      start_date: Date.new(2026, 8, 28),
+      end_date: Date.new(2026, 9, 27),
+      currency: "USD"
+    )
+
+    assert_equal "September 2026", budget.name
+    assert_equal "sep-2026", budget.to_param
+  end
+
+  test "previous_budget returns the prior month's budget when it exists" do
+    previous = Budget.create!(
+      family: @family,
+      start_date: 1.month.ago.beginning_of_month,
+      end_date: 1.month.ago.end_of_month,
+      currency: "USD"
+    )
+
+    current = Budget.create!(
+      family: @family,
+      start_date: Date.current.beginning_of_month,
+      end_date: Date.current.end_of_month,
+      currency: "USD"
+    )
+
+    assert_equal previous, current.previous_budget
+  end
+
+  test "previous_budget returns nil when no prior budget exists" do
+    current = Budget.create!(
+      family: @family,
+      start_date: Date.current.beginning_of_month,
+      end_date: Date.current.end_of_month,
+      currency: "USD"
+    )
+
+    assert_nil current.previous_budget
+  end
+
+  test "copy_categories_from! copies budgeted_spending per category and leaves other budgets untouched" do
+    previous = Budget.find_or_bootstrap(@family, start_date: 1.month.ago)
+    current = Budget.find_or_bootstrap(@family, start_date: Date.current)
+
+    previous.budget_categories.find_by(category: categories(:one)).update!(budgeted_spending: 250)
+
+    current.copy_categories_from!(previous)
+
+    assert_equal 250, current.budget_categories.find_by(category: categories(:one)).budgeted_spending
+    assert_equal 250, previous.budget_categories.find_by(category: categories(:one)).budgeted_spending
+  end
+
+  test "realign_to_cycle! shifts existing budgets to the new cycle window and preserves budgeted_spending" do
+    budget = Budget.create!(
+      family: @family,
+      start_date: Date.new(2026, 9, 1),
+      end_date: Date.new(2026, 9, 30),
+      budgeted_spending: 5000,
+      currency: "USD"
+    )
+
+    @family.update_column(:cycle_end_day, 27)
+    Budget.realign_to_cycle!(@family)
+    budget.reload
+
+    assert_equal Date.new(2026, 8, 28), budget.start_date
+    assert_equal Date.new(2026, 9, 27), budget.end_date
+    assert_equal 5000, budget.budgeted_spending
+  end
 end

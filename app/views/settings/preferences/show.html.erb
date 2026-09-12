@@ -25,6 +25,11 @@
             { label: t(".date_format") },
             { data: { auto_submit_form_target: "auto" } } %>
 
+        <%= family_form.select :cycle_end_day,
+            [ [ "Calendar month (default)", nil ] ] + (1..31).map { |day| [ "Day #{day}", day ] },
+            { label: "Budget cycle end day", include_blank: false },
+            { data: { auto_submit_form_target: "auto" } } %>
+
         <%= form.select :default_period,
             Period.all.map { |period| [ period.label, period.key ] },
             { label: t(".default_period") },

@@ -9,11 +9,13 @@ class BudgetsController < ApplicationController
   end
 
   def edit
+    @previous_budget = @budget.previous_budget
     render layout: "wizard"
   end
 
   def update
-    @budget.update!(budget_params)
+    @budget.update!(budget_params.except(:autofill_previous_month))
+    @budget.copy_categories_from!(@budget.previous_budget) if budget_params[:autofill_previous_month] == "1"
     redirect_to budget_budget_categories_path(@budget)
   end
 
@@ -31,7 +33,7 @@ class BudgetsController < ApplicationController
     end
 
     def budget_params
-      params.require(:budget).permit(:budgeted_spending, :expected_income)
+      params.require(:budget).permit(:budgeted_spending, :expected_income, :autofill_previous_month)
     end
 
     def set_budget

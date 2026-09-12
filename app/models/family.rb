@@ -1,5 +1,5 @@
 class Family < ApplicationRecord
-  include PlaidConnectable, Syncable, AutoTransferMatchable, Subscribeable
+  include PlaidConnectable, Syncable, AutoTransferMatchable, Subscribeable, CyclePeriod
 
   DATE_FORMATS = [
     [ "MM-DD-YYYY", "%m-%d-%Y" ],
@@ -35,6 +35,9 @@ class Family < ApplicationRecord
 
   validates :locale, inclusion: { in: I18n.available_locales.map(&:to_s) }
   validates :date_format, inclusion: { in: DATE_FORMATS.map(&:last) }
+  validates :cycle_end_day, inclusion: { in: 1..31 }, allow_nil: true
+
+  after_update_commit :realign_budgets_to_cycle_later, if: :saved_change_to_cycle_end_day?
 
   def assigned_merchants
     merchant_ids = transactions.where.not(merchant_id: nil).pluck(:merchant_id).uniq
@@ -117,4 +120,9 @@ class Family < ApplicationRecord
   def self_hoster?
     Rails.application.config.app_mode.self_hosted?
   end
+
+  private
+    def realign_budgets_to_cycle_later
+      RealignBudgetsToCycleJob.perform_later(self)
+    end
 end
