@@ -24,12 +24,12 @@ class IncomeStatement
     )
   end
 
-  def expense_totals(period: Period.current_month)
-    build_period_total(classification: "expense", period: period)
+  def expense_totals(period: nil)
+    build_period_total(classification: "expense", period: period || current_cycle_period)
   end
 
-  def income_totals(period: Period.current_month)
-    build_period_total(classification: "income", period: period)
+  def income_totals(period: nil)
+    build_period_total(classification: "income", period: period || current_cycle_period)
   end
 
   def median_expense(interval: "month", category: nil)
@@ -59,6 +59,11 @@ class IncomeStatement
 
     def categories
       @categories ||= family.categories.all.to_a
+    end
+
+    def current_cycle_period
+      start_date, end_date = family.current_cycle_range
+      Period.custom(start_date: start_date, end_date: end_date)
     end
 
     def build_period_total(classification:, period:)
@@ -101,15 +106,15 @@ class IncomeStatement
     def family_stats(interval: "month")
       @family_stats ||= {}
       @family_stats[interval] ||= Rails.cache.fetch([
-        "income_statement", "family_stats", family.id, interval, family.entries_cache_version
-      ]) { FamilyStats.new(family, interval:).call }
+        "income_statement", "family_stats", family.id, interval, family.cycle_end_day, family.entries_cache_version
+      ]) { FamilyStats.new(family, interval:, cycle_offset: family.cycle_end_day).call }
     end
 
     def category_stats(interval: "month")
       @category_stats ||= {}
       @category_stats[interval] ||= Rails.cache.fetch([
-        "income_statement", "category_stats", family.id, interval, family.entries_cache_version
-      ]) { CategoryStats.new(family, interval:).call }
+        "income_statement", "category_stats", family.id, interval, family.cycle_end_day, family.entries_cache_version
+      ]) { CategoryStats.new(family, interval:, cycle_offset: family.cycle_end_day).call }
     end
 
     def totals_query(transactions_scope:)

@@ -53,6 +53,7 @@ x-rails-env: &rails_env
 services:
   web:
     build: .
+    image: maybe-finance:local
     volumes:
       - app-storage:/rails/storage
     ports:
@@ -70,6 +71,7 @@ services:
 
   worker:
     build: .
+    image: maybe-finance:local
     command: bundle exec sidekiq
     restart: unless-stopped
     depends_on:

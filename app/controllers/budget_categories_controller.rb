@@ -43,6 +43,7 @@ class BudgetCategoriesController < ApplicationController
 
     def set_budget
       start_date = Budget.param_to_date(params[:budget_month_year])
-      @budget = Current.family.budgets.find_by(start_date: start_date)
+      @budget = Budget.find_or_bootstrap(Current.family, start_date: start_date)
+      raise ActiveRecord::RecordNotFound unless @budget
     end
 end

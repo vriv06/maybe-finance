@@ -1,7 +1,8 @@
 class IncomeStatement::CategoryStats
-  def initialize(family, interval: "month")
+  def initialize(family, interval: "month", cycle_offset: nil)
     @family = family
     @interval = interval
+    @cycle_offset = cycle_offset || 0
   end
 
   def call
@@ -24,7 +25,8 @@ class IncomeStatement::CategoryStats
         {
           target_currency: @family.currency,
           interval: @interval,
-          family_id: @family.id
+          family_id: @family.id,
+          cycle_offset: @cycle_offset
         }
       ])
     end
@@ -34,7 +36,7 @@ class IncomeStatement::CategoryStats
         WITH period_totals AS (
           SELECT
             c.id as category_id,
-            date_trunc(:interval, ae.date) as period,
+            date_trunc(:interval, ae.date - (:cycle_offset::text || ' days')::interval) as period,
             CASE WHEN ae.amount < 0 THEN 'income' ELSE 'expense' END as classification,
             SUM(ae.amount * COALESCE(er.rate, 1)) as total
           FROM transactions t

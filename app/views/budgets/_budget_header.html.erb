@@ -34,7 +34,7 @@
     <% end %>
 
     <% menu.with_custom_content do %>
-      <%= render "budgets/picker", family: Current.family, year: budget.start_date.year %>
+      <%= render "budgets/picker", family: Current.family, year: budget.end_date.year %>
     <% end %>
   <% end %>
 
@@ -42,7 +42,7 @@
     <%= render DS::Link.new(
         text: "Today",
         variant: "outline",
-        href: budget_path(Budget.date_to_param(Date.current)),
+        href: budget_path(Budget.current_param(Current.family)),
     ) %>
   </div>
 </div>
