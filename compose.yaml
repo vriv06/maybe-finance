@@ -34,7 +34,7 @@ x-db-env: &db_env
 
 x-rails-env: &rails_env
   <<: *db_env
-  SECRET_KEY_BASE: ${SECRET_KEY_BASE:-9c443b277f405bacd8f8df14eb5fe14569dd8b5369f96396e5a99f5bf5fd5eb62e83ac3a10e728e55d94a1d33ee3e46e8307758809d88a892731e9d8d2d9c56c}
+  SECRET_KEY_BASE: ${SECRET_KEY_BASE:?Set SECRET_KEY_BASE in .env (openssl rand -hex 64)}
   SELF_HOSTED: "true"
   RAILS_FORCE_SSL: "false"
   RAILS_ASSUME_SSL: "false"
