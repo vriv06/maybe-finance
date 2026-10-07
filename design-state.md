@@ -53,6 +53,20 @@ No taste profile — craft evaluation uses general quality standards only. Seña
 - [x] Convertir transacción existente → sí, desde `transactions/show`
 - [x] Marcar compra original → `kind: msi_purchase`
 
+## Status / Pending (2026-10-06)
+
+**Done:** discovery, brief, strategy, design plan, superpowers Phase A plan, Phase A Task 1 (migration file, commit `ebf96a96`).
+
+**Blocked on user:** run the migration (test DB + dev DB) — `schema.rb` not yet regenerated:
+- `docker compose -f compose.yaml run --rm -v "$PWD:/rails" -e RAILS_ENV=test -e POSTGRES_DB=maybe_test web bin/rails db:migrate`
+- `docker compose -f compose.yaml run --rm -v "$PWD:/rails" web bin/rails db:migrate`
+
+**Next (code):** Phase A Tasks 2–9 per `docs/superpowers/plans/2026-10-06-recurring-transactions-phase-a.md` (subagent-driven). Ledger lives in `.superpowers/sdd/progress.md` (git-excluded).
+
+**Next (Designpowers workflow):** light inclusive-personas + design-taste → content-writer, interaction-design, design-lead → superpowers plans for Phase B (capture) and Phase C (views) → design-builder + screenshot checkpoint → critic / accessibility-reviewer / heuristic-evaluator + reconciliation + fix round → synthetic-user-testing → verification-before-shipping → team presentation → design-retrospective.
+
+**Infra:** moving to a dedicated server; compose now requires `SECRET_KEY_BASE` in `.env` (commit `6e050109` on main).
+
 ## Artefact Index
 
 | Artefact | Path | Status |
