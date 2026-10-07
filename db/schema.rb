@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_09_12_004117) do
+ActiveRecord::Schema[7.2].define(version: 2026_10_06_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -29,7 +29,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_12_004117) do
     t.uuid "accountable_id"
     t.decimal "balance", precision: 19, scale: 4
     t.string "currency"
-    t.virtual "classification", type: :string, as: "\nCASE\n    WHEN ((accountable_type)::text = ANY ((ARRAY['Loan'::character varying, 'CreditCard'::character varying, 'OtherLiability'::character varying])::text[])) THEN 'liability'::text\n    ELSE 'asset'::text\nEND", stored: true
+    t.virtual "classification", type: :string, as: "\nCASE\n    WHEN ((accountable_type)::text = ANY (ARRAY[('Loan'::character varying)::text, ('CreditCard'::character varying)::text, ('OtherLiability'::character varying)::text])) THEN 'liability'::text\n    ELSE 'asset'::text\nEND", stored: true
     t.uuid "import_id"
     t.uuid "plaid_account_id"
     t.decimal "cash_balance", precision: 19, scale: 4, default: "0.0"
@@ -269,6 +269,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_12_004117) do
     t.datetime "latest_sync_activity_at", default: -> { "CURRENT_TIMESTAMP" }
     t.datetime "latest_sync_completed_at", default: -> { "CURRENT_TIMESTAMP" }
     t.integer "cycle_end_day"
+    t.date "recurring_generated_on"
   end
 
   create_table "family_exports", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -579,6 +580,27 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_12_004117) do
     t.jsonb "locked_attributes", default: {}
   end
 
+  create_table "recurring_transactions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "family_id", null: false
+    t.uuid "account_id", null: false
+    t.uuid "category_id"
+    t.uuid "merchant_id"
+    t.string "name", null: false
+    t.string "plan_type", null: false
+    t.decimal "amount", precision: 19, scale: 4, null: false
+    t.string "currency", null: false
+    t.date "start_date", null: false
+    t.integer "total_payments"
+    t.string "status", default: "active", null: false
+    t.date "last_generated_on"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["account_id"], name: "index_recurring_transactions_on_account_id"
+    t.index ["category_id"], name: "index_recurring_transactions_on_category_id"
+    t.index ["family_id"], name: "index_recurring_transactions_on_family_id"
+    t.index ["merchant_id"], name: "index_recurring_transactions_on_merchant_id"
+  end
+
   create_table "rejected_transfers", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "inflow_transaction_id", null: false
     t.uuid "outflow_transaction_id", null: false
@@ -757,9 +779,12 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_12_004117) do
     t.uuid "merchant_id"
     t.jsonb "locked_attributes", default: {}
     t.string "kind", default: "standard", null: false
+    t.uuid "recurring_transaction_id"
+    t.integer "installment_number"
     t.index ["category_id"], name: "index_transactions_on_category_id"
     t.index ["kind"], name: "index_transactions_on_kind"
     t.index ["merchant_id"], name: "index_transactions_on_merchant_id"
+    t.index ["recurring_transaction_id", "installment_number"], name: "index_transactions_on_recurring_and_installment", unique: true
   end
 
   create_table "transfers", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -856,6 +881,10 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_12_004117) do
   add_foreign_key "oauth_access_tokens", "oauth_applications", column: "application_id"
   add_foreign_key "plaid_accounts", "plaid_items"
   add_foreign_key "plaid_items", "families"
+  add_foreign_key "recurring_transactions", "accounts"
+  add_foreign_key "recurring_transactions", "categories"
+  add_foreign_key "recurring_transactions", "families"
+  add_foreign_key "recurring_transactions", "merchants"
   add_foreign_key "rejected_transfers", "transactions", column: "inflow_transaction_id"
   add_foreign_key "rejected_transfers", "transactions", column: "outflow_transaction_id"
   add_foreign_key "rule_actions", "rules"
@@ -873,6 +902,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_09_12_004117) do
   add_foreign_key "trades", "securities"
   add_foreign_key "transactions", "categories", on_delete: :nullify
   add_foreign_key "transactions", "merchants"
+  add_foreign_key "transactions", "recurring_transactions"
   add_foreign_key "transfers", "transactions", column: "inflow_transaction_id", on_delete: :cascade
   add_foreign_key "transfers", "transactions", column: "outflow_transaction_id", on_delete: :cascade
   add_foreign_key "users", "chats", column: "last_viewed_chat_id"
