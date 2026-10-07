@@ -106,3 +106,7 @@ scripts/
 .windsurfrules
 .cursor/rules/dev_workflow.mdc
 .cursor/rules/taskmaster.mdc
+
+# Database dumps (contain personal financial data)
+*.dump
+*.sql.gz
