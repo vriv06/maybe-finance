@@ -157,6 +157,13 @@ class RecurringTransaction < ApplicationRecord
     occurrence_amount(next_number)
   end
 
+  def next_payment_date
+    next_number = last_handled_number + 1
+    return nil if total_payments && next_number > total_payments
+
+    occurrence_date(next_number)
+  end
+
   # Occurrences that saving this plan adds with past dates (a charge's first payment is the source transaction)
   def backfill_count(as_of: family.today)
     upcoming(through: as_of).count { |occurrence| installments? || occurrence.number > 1 }
