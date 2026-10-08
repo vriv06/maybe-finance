@@ -170,6 +170,10 @@ class RecurringTransaction < ApplicationRecord
     end
   end
 
+  def budget_impact
+    BudgetImpact.new(self)
+  end
+
   def upcoming(through:)
     ((last_handled_number + 1)..).lazy
       .map { |number| Occurrence.new(number: number, date: occurrence_date(number), amount: occurrence_amount(number)) }
