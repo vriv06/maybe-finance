@@ -26,8 +26,14 @@ class RecurringTransactionTest < ActiveSupport::TestCase
 
   test "installments require a credit card and at least two payments" do
     assert build_plan.valid?
-    assert_not build_plan(account: accounts(:depository)).valid?
-    assert_not build_plan(total_payments: 1).valid?
+
+    not_card = build_plan(account: accounts(:depository))
+    assert_not not_card.valid?
+    assert_includes not_card.errors.attribute_names, :account
+
+    one_payment = build_plan(total_payments: 1)
+    assert_not one_payment.valid?
+    assert_includes one_payment.errors.attribute_names, :total_payments
   end
 
   test "upcoming lists occurrences up to a date" do
@@ -53,7 +59,65 @@ class RecurringTransactionTest < ActiveSupport::TestCase
     assert_equal "cancelled", plan.reload.status
   end
 
+  test "tracks generated installments from linked transactions" do
+    plan = build_plan
+    plan.save!
+    link_installment(plan, 1)
+    link_installment(plan, 3)
+
+    assert_equal [ 1, 3 ], plan.generated_numbers.sort
+    assert_equal 1, plan.remaining_payments
+    assert_equal BigDecimal("333.33"), plan.remaining_balance
+    assert_equal [ 2 ], plan.upcoming(through: plan.end_date).map(&:number)
+  end
+
+  test "remaining balance is a decimal zero for charges" do
+    plan = build_plan(plan_type: "charge", total_payments: nil, amount: 299)
+
+    assert_instance_of BigDecimal, plan.remaining_balance
+    assert_equal 0, plan.remaining_balance
+  end
+
+  test "destroying an account removes its recurring plans" do
+    plan = build_plan
+    plan.save!
+    link_installment(plan, 1)
+
+    assert_difference "RecurringTransaction.count", -1 do
+      Account.find(@credit_card.id).destroy!
+    end
+  end
+
+  test "destroying a category nullifies the plan category" do
+    category = categories(:food_and_drink)
+    plan = build_plan(category: category)
+    plan.save!
+
+    category.destroy!
+
+    assert_nil plan.reload.category_id
+  end
+
+  test "destroying a merchant nullifies the plan merchant" do
+    merchant = merchants(:netflix)
+    plan = build_plan(merchant: merchant)
+    plan.save!
+
+    merchant.destroy!
+
+    assert_nil plan.reload.merchant_id
+  end
+
   private
+    def link_installment(plan, number)
+      create_transaction(
+        account: @credit_card,
+        date: plan.occurrence_date(number),
+        amount: plan.occurrence_amount(number),
+        entryable: Transaction.new(kind: "installment", recurring_transaction: plan, installment_number: number)
+      )
+    end
+
     def build_plan(**attributes)
       RecurringTransaction.new({
         family: @family,

@@ -53,7 +53,7 @@ class RecurringTransaction < ApplicationRecord
   end
 
   def remaining_balance
-    return 0 unless installments?
+    return BigDecimal("0") unless installments?
 
     amount - generated_numbers.sum { |number| occurrence_amount(number) }
   end
