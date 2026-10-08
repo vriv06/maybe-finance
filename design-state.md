@@ -62,7 +62,18 @@ No taste profile — craft evaluation uses general quality standards only. Seña
 
 **Done:** discovery, brief, strategy, design plan, superpowers Phase A plan, **Phase A (Tasks 1–9) done** — commits `ebf96a96..HEAD` on `feature/meses-sin-intereses`. Migration applied on `maybe_test` and `maybe_production`. Tests `test/models test/jobs test/controllers`: same 124 pre-existing failures as before Phase A (111 are `tailwind.css` not built in the bind-mounted source), no new ones. Rubocop clean.
 
-**Minor items for the final review** are in `.superpowers/sdd/progress.md` (git-excluded).
+Final whole-branch review: ready. Its 3 Important findings were fixed in Task 10 (`65a21ac0`): a deleted occurrence is never regenerated; deleting an MSI purchase deletes its plan and installments (destroying an MSI plan directly reverts the purchase to `standard`); `msi_purchase`/`installment` kinds are locked and excluded from transfer matching.
+
+**Phase B must handle (carry-over from reviews):**
+- Reset `last_generated_on` (or persist a watermark) if a plan's schedule becomes editable.
+- `create_from_entry!`: only accept `standard`, non-transfer transactions.
+- Show validation errors instead of a 500: one-time toggle on locked rows, `TransferMatchesController#create`.
+- Hide/disable the one-time toggle on `msi_purchase`/`installment` rows.
+- Generation date uses server/app date, not the family timezone.
+- Limit plans to manual, active accounts; one invalid plan must not stop the family job.
+- `Category#replace_and_destroy!` should move the plan's category, not nullify it.
+
+Detailed ledger: `.superpowers/sdd/progress.md` (git-excluded).
 
 **Next (code):** superpowers plans for Phase B (capture UI: `DS::Disclosure` fields in the transaction form + convert from `transactions/show`, calling `RecurringTransaction.create_from_entry!`) and Phase C (commitments view on the credit card + one line in budget).
 
