@@ -284,4 +284,13 @@ class IncomeStatementTest < ActiveSupport::TestCase
     assert_equal 5, totals.transactions_count
     assert_equal Money.new(1050, @family.currency), totals.expense_money # 900 + 150
   end
+
+  test "msi purchases are excluded from expenses but installments count" do
+    create_transaction(account: @credit_card_account, amount: 3000, category: @groceries_category, kind: "msi_purchase")
+    create_transaction(account: @credit_card_account, amount: 1000, category: @groceries_category, kind: "installment")
+
+    expense_totals = IncomeStatement.new(@family).expense_totals(period: Period.last_30_days)
+
+    assert_equal 200 + 300 + 400 + 1000, expense_totals.total
+  end
 end

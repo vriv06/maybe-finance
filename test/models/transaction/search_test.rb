@@ -298,4 +298,15 @@ class Transaction::SearchTest < ActiveSupport::TestCase
     assert_equal Money.new(0, "USD"), totals.expense_money
     assert_equal Money.new(0, "USD"), totals.income_money
   end
+
+  test "totals exclude one_time and msi purchases but include installments" do
+    create_transaction(account: @credit_card_account, amount: 100, kind: "standard")
+    create_transaction(account: @credit_card_account, amount: 500, kind: "one_time")
+    create_transaction(account: @credit_card_account, amount: 3000, kind: "msi_purchase")
+    create_transaction(account: @credit_card_account, amount: 1000, kind: "installment")
+
+    totals = Transaction::Search.new(@family).totals
+
+    assert_equal Money.new(1100, @family.currency), totals.expense_money
+  end
 end
