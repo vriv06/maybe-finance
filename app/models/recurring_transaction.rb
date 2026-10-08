@@ -22,6 +22,7 @@ class RecurringTransaction < ApplicationRecord
   validate :installments_require_credit_card
 
   scope :active, -> { where(status: "active") }
+  scope :generatable, -> { active.joins(:account).merge(Account.manual).where(accounts: { status: "active" }) }
 
   def self.create_from_entry!(entry, plan_type:, total_payments: nil, start_date: nil)
     transaction do
@@ -106,7 +107,7 @@ class RecurringTransaction < ApplicationRecord
     update!(status: "cancelled")
   end
 
-  def generate_due!(as_of: Date.current)
+  def generate_due!(as_of: family.today)
     return 0 unless status == "active"
 
     created = upcoming(through: as_of).count { |occurrence| create_occurrence(occurrence) }

@@ -122,6 +122,11 @@ class Family < ApplicationRecord
     Rails.application.config.app_mode.self_hosted?
   end
 
+  # Dates users see (generation, "today" in previews) follow the family's timezone, not the server's
+  def today
+    (Time.find_zone(timezone) || Time.zone).today
+  end
+
   private
     def realign_budgets_to_cycle_later
       RealignBudgetsToCycleJob.perform_later(self)

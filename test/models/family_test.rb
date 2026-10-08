@@ -42,4 +42,13 @@ class FamilyTest < ActiveSupport::TestCase
     _, end_date = @family.current_cycle_range
     assert_equal Date.current, end_date
   end
+
+  test "today follows the family timezone" do
+    family = families(:dylan_family)
+    family.update!(timezone: "Pacific/Kiritimati")
+
+    travel_to Time.utc(2026, 10, 8, 12) do
+      assert_equal Date.new(2026, 10, 9), family.today
+    end
+  end
 end

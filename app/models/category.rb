@@ -99,6 +99,7 @@ class Category < ApplicationRecord
   def replace_and_destroy!(replacement)
     transaction do
       transactions.update_all category_id: replacement&.id
+      recurring_transactions.update_all category_id: replacement&.id
       destroy!
     end
   end

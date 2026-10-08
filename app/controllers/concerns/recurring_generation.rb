@@ -10,9 +10,11 @@ module RecurringGeneration
     def generate_recurring_transactions_later
       family = Current.family
       return unless family
-      return if family.recurring_generated_on == Date.current
 
-      family.update_column(:recurring_generated_on, Date.current)
-      GenerateRecurringTransactionsJob.perform_later(family) if family.recurring_transactions.active.exists?
+      today = family.today
+      return if family.recurring_generated_on == today
+
+      family.update_column(:recurring_generated_on, today)
+      GenerateRecurringTransactionsJob.perform_later(family) if family.recurring_transactions.generatable.exists?
     end
 end
