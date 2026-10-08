@@ -58,8 +58,19 @@ class BudgetTest < ActiveSupport::TestCase
     refute Budget.budget_date_valid?(3.years.ago.beginning_of_month, family: @family)
   end
 
-  test "budget_date_valid? does not allow future dates beyond current month" do
-    refute Budget.budget_date_valid?(2.months.from_now, family: @family)
+  test "budget_date_valid? allows planning up to 12 months ahead" do
+    travel_to Date.new(2026, 10, 8)
+
+    assert Budget.budget_date_valid?(Date.new(2027, 10, 1), family: @family)
+    refute Budget.budget_date_valid?(Date.new(2027, 11, 1), family: @family)
+  end
+
+  test "the planning horizon follows custom month windows" do
+    travel_to Date.new(2026, 10, 8)
+    @family.update!(cycle_end_day: 27) # current month: Sep 28 - Oct 27
+
+    assert Budget.budget_date_valid?(Date.new(2027, 10, 1), family: @family)  # Sep 28 - Oct 27, 2027
+    refute Budget.budget_date_valid?(Date.new(2027, 11, 1), family: @family)  # Oct 28 - Nov 27, 2027
   end
 
   test "previous_budget_param returns nil when date is too old" do
@@ -247,5 +258,43 @@ class BudgetTest < ActiveSupport::TestCase
     assert_equal BigDecimal("50"), current.committed_spending # Oct 28 occurrence is not here (Sep 28 is generated)
     assert_equal BigDecimal("50"), following.committed_spending
     assert_equal [ Date.new(2026, 10, 28) ], following.recurring_commitments.items.map(&:date)
+  end
+
+  test "next_budget_param moves past the current month until the horizon" do
+    travel_to Date.new(2026, 10, 8)
+    current = Budget.create!(family: @family, start_date: Date.new(2026, 10, 1), end_date: Date.new(2026, 10, 31), currency: "USD")
+    last = Budget.create!(family: @family, start_date: Date.new(2027, 10, 1), end_date: Date.new(2027, 10, 31), currency: "USD")
+
+    assert_equal "nov-2026", current.next_budget_param
+    assert_nil last.next_budget_param
+  end
+
+  test "future months show committed amounts where spending would be" do
+    travel_to Date.new(2026, 10, 8)
+    family = families(:dylan_family)
+    family.budgets.destroy_all
+    accounts(:credit_card).entries.delete_all
+    family.recurring_transactions.create!(account: accounts(:credit_card), name: "Club", plan_type: "charge",
+                                          amount: 300, currency: "USD", start_date: Date.new(2026, 10, 15),
+                                          category: categories(:food_and_drink))
+
+    december = Budget.find_or_bootstrap(family, start_date: Date.new(2026, 12, 1))
+    food = december.budget_categories.find { |bc| bc.category == categories(:food_and_drink) }
+
+    assert december.future?
+    assert_equal BigDecimal("300"), december.actual_spending
+    assert_equal BigDecimal("300"), food.actual_spending
+  end
+
+  test "previous_budget of a future month is the latest configured one" do
+    travel_to Date.new(2026, 10, 8)
+    family = families(:dylan_family)
+    family.budgets.destroy_all
+    october = family.budgets.create!(start_date: Date.new(2026, 10, 1), end_date: Date.new(2026, 10, 31),
+                                     currency: "USD", budgeted_spending: 1000, expected_income: 2000)
+    family.budgets.create!(start_date: Date.new(2026, 11, 1), end_date: Date.new(2026, 11, 30), currency: "USD")
+    december = family.budgets.create!(start_date: Date.new(2026, 12, 1), end_date: Date.new(2026, 12, 31), currency: "USD")
+
+    assert_equal october, december.previous_budget
   end
 end

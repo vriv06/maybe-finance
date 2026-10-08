@@ -2,6 +2,7 @@ class Budget < ApplicationRecord
   include Monetizable
 
   PARAM_DATE_FORMAT = "%b-%Y"
+  FUTURE_CYCLES_LIMIT = 12
 
   belongs_to :family
 
@@ -32,9 +33,15 @@ class Budget < ApplicationRecord
 
     def budget_date_valid?(date, family:)
       start_date, end_date = family.cycle_range_containing(date)
-      _, current_cycle_end = family.cycle_range_containing(Date.current)
 
-      start_date >= oldest_valid_budget_date(family) && end_date <= current_cycle_end
+      start_date >= oldest_valid_budget_date(family) && end_date <= latest_valid_budget_end_date(family)
+    end
+
+    # End of the furthest month that can be planned: the current one plus FUTURE_CYCLES_LIMIT
+    def latest_valid_budget_end_date(family)
+      cycle_end = family.cycle_range_containing(Date.current).last
+      FUTURE_CYCLES_LIMIT.times { cycle_end = family.cycle_range_containing(cycle_end + 1.day).last }
+      cycle_end
     end
 
     # The month's budget if it was ever created, otherwise an unsaved one (never bootstraps or saves)
@@ -165,8 +172,10 @@ class Budget < ApplicationRecord
     self.class.date_to_param(previous_month_date)
   end
 
-  # The prior month's Budget record, if one was ever created (nil otherwise -- this does not bootstrap one)
+  # The budget to copy from. For a future month it's the latest one set up (the months in
+  # between are usually empty); otherwise the prior month's record, if any (never bootstraps one)
   def previous_budget
+    return latest_initialized_budget_before if future?
     return nil unless previous_budget_param
 
     prev_start, prev_end = family.cycle_range_containing(end_date.prev_month.beginning_of_month)
@@ -187,8 +196,6 @@ class Budget < ApplicationRecord
   end
 
   def next_budget_param
-    return nil if current?
-
     next_month_date = end_date.next_month.beginning_of_month
     return nil unless self.class.budget_date_valid?(next_month_date, family: family)
 
@@ -219,11 +226,15 @@ class Budget < ApplicationRecord
     income_statement.median_expense(interval: "month")
   end
 
+  # Future months have no real spending yet: what recurring payments commit takes its place
+  # everywhere spending is shown (donut, summary, category rows). This is the only switch.
   def actual_spending
-    expense_totals.total
+    future? ? committed_spending : expense_totals.total
   end
 
   def budget_category_actual_spending(budget_category)
+    return committed_spending_for(budget_category) if future?
+
     expense_totals.category_totals.find { |ct| ct.category.id == budget_category.category.id }&.total || 0
   end
 
