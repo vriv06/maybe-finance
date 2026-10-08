@@ -1,6 +1,17 @@
 class RecurringTransaction < ApplicationRecord
   PLAN_TYPES = %w[charge installments].freeze
   STATUSES = %w[active cancelled completed].freeze
+  MAX_INSTALLMENTS = 48
+
+  INELIGIBILITY_MESSAGES = {
+    transfer: "Transfers can't repeat.",
+    already_linked: "This is already part of a recurring payment.",
+    not_standard: "Turn off One-time Expense to set this up.",
+    income: "Only expenses can repeat.",
+    account_not_manual: "Only manual accounts can have recurring payments."
+  }.freeze
+
+  GENERIC_ERROR = "We couldn't set this up. Nothing changed. Try again.".freeze
 
   Occurrence = Data.define(:number, :date, :amount)
 
@@ -13,43 +24,84 @@ class RecurringTransaction < ApplicationRecord
   has_many :transactions, dependent: :nullify
   after_destroy :sync_account_later, unless: :destroyed_by_association
 
-  validates :name, :currency, :start_date, presence: true
+  # The entry a plan is being built from (capture, preview, convert); drives eligibility and first-payment checks
+  attr_accessor :source_entry
+
+  validates :name, :currency, presence: true
+  validates :start_date, presence: { message: "Choose a date for the first payment." }
   validates :plan_type, inclusion: { in: PLAN_TYPES }
   validates :status, inclusion: { in: STATUSES }
   validates :amount, numericality: { greater_than: 0 }
-  validates :total_payments, numericality: { only_integer: true, greater_than_or_equal_to: 2 }, if: :installments?
-  validates :total_payments, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true, unless: :installments?
+  validate :total_payments_in_range
+  validate :installment_amount_large_enough
   validate :installments_require_credit_card
+  validate :account_manual_and_active, on: :create
+  validate :first_payment_not_before_purchase, on: :create
+  validate :source_entry_eligible, on: :create
+  validate :schedule_unchanged, on: :update
 
   scope :active, -> { where(status: "active") }
   scope :generatable, -> { active.joins(:account).merge(Account.manual).where(accounts: { status: "active" }) }
 
-  def self.create_from_entry!(entry, plan_type:, total_payments: nil, start_date: nil)
-    transaction do
+  class << self
+    # Why an entry can't become (part of) a plan, or nil when it can
+    def ineligibility_reason(entry)
+      transaction = entry.entryable
+      return :not_standard unless transaction.is_a?(Transaction)
+      return :transfer if transaction.transfer? || transaction.transfer.present?
+      return :already_linked if transaction.recurring_transaction_id.present?
+      return :not_standard unless transaction.standard?
+      return :income if entry.amount.to_d.negative?
+      return :account_not_manual unless entry.account.manual? && entry.account.active?
+
+      nil
+    end
+
+    def build_from_entry(entry, plan_type:, total_payments: nil, start_date: nil)
       source = entry.entryable
 
-      plan = create!(
+      new(
+        source_entry: entry,
         family: entry.account.family,
         account: entry.account,
         name: entry.name,
-        category: source.category,
-        merchant: source.merchant,
+        category: source.try(:category),
+        merchant: source.try(:merchant),
         plan_type: plan_type,
         amount: entry.amount,
         currency: entry.currency,
         total_payments: total_payments,
-        start_date: start_date || (plan_type == "installments" ? entry.date.next_month : entry.date)
+        start_date: plan_type == "installments" ? first_payment_date(entry, start_date) : entry.date
       )
-
-      if plan.installments?
-        source.update!(kind: "msi_purchase", recurring_transaction: plan)
-      else
-        source.update!(recurring_transaction: plan, installment_number: 1)
-      end
-
-      plan.generate_due!
-      plan
     end
+
+    def create_from_entry!(entry, **attributes)
+      transaction do
+        plan = build_from_entry(entry, **attributes)
+        plan.save!
+
+        source = entry.entryable
+        if plan.installments?
+          source.update!(kind: "msi_purchase", recurring_transaction: plan)
+        else
+          source.update!(recurring_transaction: plan, installment_number: 1)
+        end
+
+        plan.generate_due!
+        plan
+      end
+    end
+
+    private
+      # nil means "not provided" (default: one month after the purchase); a blank or invalid string stays nil
+      def first_payment_date(entry, start_date)
+        return entry.date&.next_month if start_date.nil?
+        return start_date unless start_date.is_a?(String)
+
+        Date.iso8601(start_date)
+      rescue Date::Error
+        nil
+      end
   end
 
   def installments?
@@ -96,6 +148,26 @@ class RecurringTransaction < ApplicationRecord
     amount - (1..last_handled_number).sum(BigDecimal("0")) { |number| occurrence_amount(number) }
   end
 
+  # What one month of this plan costs: the next installment, or the charge amount
+  def monthly_amount
+    next_number = last_handled_number + 1
+    next_number = total_payments if total_payments && next_number > total_payments
+    occurrence_amount(next_number)
+  end
+
+  # Occurrences that saving this plan adds with past dates (a charge's first payment is the source transaction)
+  def backfill_count(as_of: family.today)
+    upcoming(through: as_of).count { |occurrence| installments? || occurrence.number > 1 }
+  end
+
+  # The day a finished plan stopped: when it was stopped, or its last payment
+  def ended_on
+    case status
+    when "cancelled" then updated_at.to_date
+    when "completed" then end_date
+    end
+  end
+
   def upcoming(through:)
     ((last_handled_number + 1)..).lazy
       .map { |number| Occurrence.new(number: number, date: occurrence_date(number), amount: occurrence_amount(number)) }
@@ -119,10 +191,62 @@ class RecurringTransaction < ApplicationRecord
   end
 
   private
+    def total_payments_in_range
+      raw = total_payments_before_type_cast.to_s.strip
+      whole = raw.match?(/\A\d+\z/) ? raw.to_i : nil
+
+      if installments?
+        unless whole&.between?(2, MAX_INSTALLMENTS)
+          errors.add(:total_payments, "Enter 2 to #{MAX_INSTALLMENTS} installments.")
+        end
+      elsif raw.present? && !(whole && whole >= 1)
+        errors.add(:total_payments, "Enter a whole number, or leave it empty.")
+      end
+    end
+
+    def installment_amount_large_enough
+      return unless installments? && amount.present? && total_payments.present?
+      return if errors.include?(:total_payments)
+      return if (amount / total_payments).floor(2) >= BigDecimal("0.01")
+
+      errors.add(:total_payments, "Too small to split into #{total_payments} installments. Use fewer.")
+    end
+
     def installments_require_credit_card
       return unless installments? && account
 
-      errors.add(:account, "must be a credit card for installments") unless account.accountable_type == "CreditCard"
+      errors.add(:account, "Installments only work on credit cards.") unless account.accountable_type == "CreditCard"
+    end
+
+    def account_manual_and_active
+      return unless account
+      return if account.manual? && account.active?
+
+      errors.add(:account, INELIGIBILITY_MESSAGES[:account_not_manual])
+    end
+
+    def first_payment_not_before_purchase
+      return unless installments? && start_date && source_entry&.date
+      return if start_date >= source_entry.date
+
+      errors.add(:start_date, "The first payment can't be before #{source_entry.date.strftime("%b %-d, %Y")}.")
+    end
+
+    def source_entry_eligible
+      return unless source_entry
+
+      reason = self.class.ineligibility_reason(source_entry)
+      # A manual/active account is reported on :account by account_manual_and_active
+      return if reason.nil? || reason == :account_not_manual
+
+      errors.add(:base, INELIGIBILITY_MESSAGES.fetch(reason))
+    end
+
+    # D12: the schedule is fixed once created, so last_generated_on never needs a reset
+    def schedule_unchanged
+      changed_schedule = will_save_change_to_start_date? || will_save_change_to_total_payments? ||
+                         will_save_change_to_plan_type? || (installments? && will_save_change_to_amount?)
+      errors.add(:base, "The schedule can't be changed. Stop this plan and add a new one.") if changed_schedule
     end
 
     def create_occurrence(occurrence)

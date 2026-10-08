@@ -260,6 +260,85 @@ class RecurringTransactionTest < ActiveSupport::TestCase
     assert_equal 1, plan.transactions.count
   end
 
+  test "create_from_entry! rejects transactions that can't repeat" do
+    linked = create_transaction(account: @credit_card, amount: 100, name: "Netflix")
+    RecurringTransaction.create_from_entry!(linked, plan_type: "charge")
+
+    {
+      create_transaction(account: @credit_card, amount: 100, kind: "cc_payment") => "Transfers can't repeat.",
+      create_transaction(account: @credit_card, amount: 100, kind: "one_time") => "Turn off One-time Expense to set this up.",
+      create_transaction(account: @credit_card, amount: -100) => "Only expenses can repeat.",
+      linked => "This is already part of a recurring payment."
+    }.each do |entry, message|
+      error = assert_raises(ActiveRecord::RecordInvalid) do
+        RecurringTransaction.create_from_entry!(entry, plan_type: "charge")
+      end
+      assert_includes error.record.errors[:base], message
+    end
+  end
+
+  test "plans require a manual, active account" do
+    plan = build_plan(plan_type: "charge", total_payments: nil, account: accounts(:connected))
+
+    assert_not plan.valid?
+    assert_includes plan.errors[:account], "Only manual accounts can have recurring payments."
+  end
+
+  test "validation messages are the interface copy" do
+    assert_equal [ "Enter 2 to 48 installments." ], build_plan(total_payments: 49).tap(&:validate).errors[:total_payments]
+    assert_equal [ "Too small to split into 6 installments. Use fewer." ],
+                 build_plan(amount: BigDecimal("0.05"), total_payments: 6).tap(&:validate).errors[:total_payments]
+    assert_includes build_plan(account: accounts(:depository)).tap(&:validate).errors[:account],
+                    "Installments only work on credit cards."
+    assert_equal [ "Enter a whole number, or leave it empty." ],
+                 build_plan(plan_type: "charge", total_payments: "abc").tap(&:validate).errors[:total_payments]
+  end
+
+  test "the first payment can't be missing or before the purchase" do
+    purchase = create_transaction(account: @credit_card, amount: 1200, date: Date.new(2026, 10, 8))
+
+    early = RecurringTransaction.build_from_entry(purchase, plan_type: "installments", total_payments: 3, start_date: "2026-10-01")
+    assert_not early.valid?
+    assert_equal [ "The first payment can't be before Oct 8, 2026." ], early.errors[:start_date]
+
+    blank = RecurringTransaction.build_from_entry(purchase, plan_type: "installments", total_payments: 3, start_date: "")
+    assert_not blank.valid?
+    assert_equal [ "Choose a date for the first payment." ], blank.errors[:start_date]
+
+    default = RecurringTransaction.build_from_entry(purchase, plan_type: "installments", total_payments: 3)
+    assert_equal Date.new(2026, 11, 8), default.start_date
+  end
+
+  test "the schedule can't change after the plan is created" do
+    plan = build_plan
+    plan.save!
+
+    assert_not plan.update(total_payments: 6)
+    assert plan.reload.update(name: "New laptop")
+  end
+
+  test "backfill_count counts past occurrences except a charge's own first payment" do
+    travel_to Date.new(2026, 10, 8)
+    purchase = create_transaction(account: @credit_card, amount: 3000, date: Date.new(2026, 7, 8))
+
+    installments = RecurringTransaction.build_from_entry(purchase, plan_type: "installments", total_payments: 6)
+    charge = RecurringTransaction.build_from_entry(purchase, plan_type: "charge")
+
+    assert_equal 3, installments.backfill_count # Aug 8, Sep 8, Oct 8
+    assert_equal 3, charge.backfill_count       # Jul 8 is the purchase itself
+  end
+
+  test "ended_on and monthly_amount describe the plan" do
+    plan = build_plan(start_date: Date.new(2026, 1, 15))
+    plan.save!
+
+    assert_equal BigDecimal("333.33"), plan.monthly_amount
+    assert_nil plan.ended_on
+
+    plan.cancel!
+    assert_equal plan.updated_at.to_date, plan.ended_on
+  end
+
   private
     def link_installment(plan, number)
       create_transaction(
