@@ -206,4 +206,46 @@ class BudgetTest < ActiveSupport::TestCase
     assert_nil september.basis_budget
     assert_nil september.commitments_percent
   end
+
+  test "commitments overage is always a BigDecimal" do
+    travel_to Date.new(2026, 10, 8)
+    family = families(:dylan_family)
+    family.budgets.destroy_all
+    accounts(:credit_card).entries.delete_all
+
+    october = family.budgets.create!(start_date: Date.new(2026, 10, 1), end_date: Date.new(2026, 10, 31),
+                                     currency: "USD", budgeted_spending: 1000, expected_income: 2000)
+
+    assert_kind_of BigDecimal, october.commitments_overage
+    assert_equal 0, october.commitments_overage
+  end
+
+  test "future and past follow the family's today" do
+    family = families(:dylan_family)
+    family.update!(timezone: "Pacific/Auckland")
+    travel_to Time.utc(2026, 10, 31, 20, 0) # Nov 1 in Auckland, Oct 31 in UTC
+
+    assert_equal Date.new(2026, 11, 1), family.today
+    assert Budget.for_cycle(family, Date.new(2026, 10, 15)).past?
+    assert_not Budget.for_cycle(family, Date.new(2026, 11, 15)).past?
+    assert_not Budget.for_cycle(family, Date.new(2026, 11, 15)).future?
+  end
+
+  test "a charge dated after the cycle end lands in the next cycle" do
+    travel_to Date.new(2026, 10, 8)
+    family = families(:dylan_family)
+    family.update!(cycle_end_day: 27)
+    family.budgets.destroy_all
+    accounts(:credit_card).entries.delete_all
+    family.recurring_transactions.create!(account: accounts(:credit_card), name: "Gym", plan_type: "charge",
+                                          amount: 50, currency: "USD", start_date: Date.new(2026, 9, 28))
+
+    current = Budget.for_cycle(family, Date.new(2026, 10, 8)) # Sep 28 - Oct 27
+    following = Budget.for_cycle(family, Date.new(2026, 10, 28)) # Oct 28 - Nov 27
+
+    assert_equal Date.new(2026, 10, 27), current.end_date
+    assert_equal BigDecimal("50"), current.committed_spending # Oct 28 occurrence is not here (Sep 28 is generated)
+    assert_equal BigDecimal("50"), following.committed_spending
+    assert_equal [ Date.new(2026, 10, 28) ], following.recurring_commitments.items.map(&:date)
+  end
 end

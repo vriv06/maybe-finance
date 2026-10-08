@@ -277,6 +277,16 @@ class RecurringTransactionTest < ActiveSupport::TestCase
     end
   end
 
+  test "a transaction in another currency than the family's can't become a plan" do
+    entry = create_transaction(account: @credit_card, amount: 100, name: "Imported", currency: "MXN")
+
+    assert_equal :foreign_currency, RecurringTransaction.ineligibility_reason(entry)
+    error = assert_raises(ActiveRecord::RecordInvalid) do
+      RecurringTransaction.create_from_entry!(entry, plan_type: "charge")
+    end
+    assert_includes error.record.errors[:base], "Recurring payments only work in your main currency."
+  end
+
   test "plans require a manual, active account" do
     plan = build_plan(plan_type: "charge", total_payments: nil, account: accounts(:connected))
 

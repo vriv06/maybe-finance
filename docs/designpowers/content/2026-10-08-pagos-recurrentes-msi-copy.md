@@ -109,6 +109,7 @@ Junto al campo, `aria-invalid` + `aria-describedby`. Al enviar, foco al primero.
 | `b.err.expense_only` | Only expenses can repeat. | Defensa server-side |
 | `b.err.installments_credit_only` | Installments only work on credit cards. | Defensa; también nota al cambiar de cuenta |
 | `b.err.account_not_manual` | Only manual accounts can have recurring payments. | Cuenta conectada o inactiva |
+| `b.err.foreign_currency` | Recurring payments only work in your main currency. | Transacción en otra moneda que la de la familia (source: orchestrator default 2026-10-08, needs content-writer review) |
 | `b.err.amount_too_small` | Too small to split into {6} installments. Use fewer. | Cuota < 0.01 |
 
 ## 5. B3 — Convertir desde el drawer (Kept)

@@ -146,11 +146,11 @@ class Budget < ApplicationRecord
   end
 
   def future?
-    start_date > Date.current
+    start_date > family.today
   end
 
   def past?
-    end_date < Date.current
+    end_date < family.today
   end
 
   # The latest month before this one that has a spending budget set up
@@ -336,7 +336,7 @@ class Budget < ApplicationRecord
   end
 
   def commitments_overage
-    commitments_over_budget? ? committed_spending - budget_basis : 0
+    commitments_over_budget? ? committed_spending - budget_basis : BigDecimal("0")
   end
 
   # Whole percent of the basis; rounded up once over so it never reads "100%" while over budget

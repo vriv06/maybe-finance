@@ -1,6 +1,7 @@
 # What recurring payments commit in a date range: rows the plans already generated plus the
 # occurrences active plans will still add. The single source for C4, the capture preview,
 # future budget months and the credit card's Upcoming list.
+# Amounts are summed in the family currency because plans are restricted to it.
 class Family::RecurringCommitments
   Item = Data.define(:plan, :number, :date, :amount, :category, :entry) do
     def generated?

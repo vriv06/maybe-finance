@@ -8,7 +8,8 @@ class RecurringTransaction < ApplicationRecord
     already_linked: "This is already part of a recurring payment.",
     not_standard: "Turn off One-time Expense to set this up.",
     income: "Only expenses can repeat.",
-    account_not_manual: "Only manual accounts can have recurring payments."
+    account_not_manual: "Only manual accounts can have recurring payments.",
+    foreign_currency: "Recurring payments only work in your main currency."
   }.freeze
 
   GENERIC_ERROR = "We couldn't set this up. Nothing changed. Try again.".freeze
@@ -53,6 +54,7 @@ class RecurringTransaction < ApplicationRecord
       return :not_standard unless transaction.standard?
       return :income if entry.amount.to_d.negative?
       return :account_not_manual unless entry.account.manual? && entry.account.active?
+      return :foreign_currency unless entry.currency == entry.account.family.currency
 
       nil
     end

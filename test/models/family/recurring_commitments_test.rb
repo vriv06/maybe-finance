@@ -32,6 +32,17 @@ class Family::RecurringCommitmentsTest < ActiveSupport::TestCase
     assert_equal BigDecimal("50"), commitments.total_for(@family.categories.uncategorized)
   end
 
+  test "generated rows the user excluded are not counted, like budget spending" do
+    plan = create_charge(name: "Gym", amount: 50, start_date: Date.new(2026, 10, 1))
+    plan.generate_due!
+    entry = plan.transactions.first.entry
+    range = { start_date: Date.new(2026, 10, 1), end_date: Date.new(2026, 10, 31) }
+
+    assert_equal BigDecimal("50"), @family.recurring_commitments(**range).total
+    entry.update!(excluded: true)
+    assert_equal BigDecimal("0"), @family.recurring_commitments(**range).total
+  end
+
   test "stopped plans add nothing new" do
     create_charge(name: "Gym", amount: 50, start_date: Date.new(2026, 10, 16)).cancel!
 
