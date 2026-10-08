@@ -20,6 +20,34 @@ class RecurringTransaction < ApplicationRecord
 
   scope :active, -> { where(status: "active") }
 
+  def self.create_from_entry!(entry, plan_type:, total_payments: nil, start_date: nil)
+    transaction do
+      source = entry.entryable
+
+      plan = create!(
+        family: entry.account.family,
+        account: entry.account,
+        name: entry.name,
+        category: source.category,
+        merchant: source.merchant,
+        plan_type: plan_type,
+        amount: entry.amount,
+        currency: entry.currency,
+        total_payments: total_payments,
+        start_date: start_date || (plan_type == "installments" ? entry.date.next_month : entry.date)
+      )
+
+      if plan.installments?
+        source.update!(kind: "msi_purchase", recurring_transaction: plan)
+      else
+        source.update!(recurring_transaction: plan, installment_number: 1)
+      end
+
+      plan.generate_due!
+      plan
+    end
+  end
+
   def installments?
     plan_type == "installments"
   end

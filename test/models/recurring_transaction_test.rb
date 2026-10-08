@@ -154,6 +154,26 @@ class RecurringTransactionTest < ActiveSupport::TestCase
     assert plan.transactions.all?(&:standard?)
   end
 
+  test "create_from_entry! turns a past purchase into an msi plan and backfills due installments" do
+    purchase = create_transaction(account: @credit_card, amount: 3000, name: "Laptop", date: Date.current - 2.months - 5.days)
+
+    plan = RecurringTransaction.create_from_entry!(purchase, plan_type: "installments", total_payments: 3)
+
+    assert purchase.entryable.reload.msi_purchase?
+    assert_equal plan, purchase.entryable.recurring_transaction
+    assert_equal purchase.date.next_month, plan.start_date
+    assert_equal 2, plan.transactions.where(kind: "installment").count
+  end
+
+  test "create_from_entry! links a charge's original entry as the first occurrence" do
+    entry = create_transaction(account: @credit_card, amount: 299, name: "Netflix", date: Date.current)
+
+    plan = RecurringTransaction.create_from_entry!(entry, plan_type: "charge")
+
+    assert_equal 1, entry.entryable.reload.installment_number
+    assert_equal 1, plan.transactions.count
+  end
+
   private
     def link_installment(plan, number)
       create_transaction(
