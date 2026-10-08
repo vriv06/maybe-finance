@@ -12,7 +12,8 @@ class Budget < ApplicationRecord
 
   monetize :budgeted_spending, :expected_income, :allocated_spending,
            :actual_spending, :available_to_spend, :available_to_allocate,
-           :estimated_spending, :estimated_income, :actual_income, :remaining_expected_income
+           :estimated_spending, :estimated_income, :actual_income, :remaining_expected_income,
+           :committed_spending, :budget_basis, :commitments_overage
 
   class << self
     def date_to_param(date)
@@ -34,6 +35,14 @@ class Budget < ApplicationRecord
       _, current_cycle_end = family.cycle_range_containing(Date.current)
 
       start_date >= oldest_valid_budget_date(family) && end_date <= current_cycle_end
+    end
+
+    # The month's budget if it was ever created, otherwise an unsaved one (never bootstraps or saves)
+    def for_cycle(family, date)
+      start_date, end_date = family.cycle_range_containing(date)
+
+      family.budgets.find_by(start_date: start_date, end_date: end_date) ||
+        Budget.new(family_id: family.id, start_date: start_date, end_date: end_date, currency: family.currency)
     end
 
     def find_or_bootstrap(family, start_date:)
@@ -134,6 +143,19 @@ class Budget < ApplicationRecord
 
   def current?
     [ start_date, end_date ] == family.cycle_range_containing(Date.current)
+  end
+
+  def future?
+    start_date > Date.current
+  end
+
+  def past?
+    end_date < Date.current
+  end
+
+  # The latest month before this one that has a spending budget set up
+  def latest_initialized_budget_before
+    family.budgets.where("end_date < ?", start_date).where.not(budgeted_spending: nil).order(end_date: :desc).first
   end
 
   def previous_budget_param
@@ -275,6 +297,54 @@ class Budget < ApplicationRecord
     return 0 unless remaining_expected_income.negative?
 
     remaining_expected_income.abs / expected_income.to_f * 100
+  end
+
+  # =============================================================================
+  # Recurring commitments: what recurring payments already take from this month
+  # =============================================================================
+  def recurring_commitments
+    @recurring_commitments ||= family.recurring_commitments(start_date: start_date, end_date: end_date)
+  end
+
+  def committed_spending
+    recurring_commitments.total
+  end
+
+  def committed_spending_for(budget_category)
+    recurring_commitments.total_for(budget_category.category)
+  end
+
+  # The budget commitments are compared with: this one once set up, otherwise (current and
+  # future months only) the latest set-up budget before it
+  def basis_budget
+    return self if initialized?
+    return nil if past?
+
+    latest_initialized_budget_before
+  end
+
+  def budget_basis
+    basis_budget&.budgeted_spending
+  end
+
+  def uses_reference_budget?
+    basis_budget.present? && basis_budget != self
+  end
+
+  def commitments_over_budget?
+    budget_basis.present? && budget_basis.positive? && committed_spending > budget_basis
+  end
+
+  def commitments_overage
+    commitments_over_budget? ? committed_spending - budget_basis : 0
+  end
+
+  # Whole percent of the basis; rounded up once over so it never reads "100%" while over budget
+  def commitments_percent
+    return nil unless budget_basis&.positive?
+
+    ratio = committed_spending / budget_basis * 100
+    commitments_over_budget? ? ratio.ceil : ratio.floor
   end
 
   private

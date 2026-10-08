@@ -127,6 +127,10 @@ class Family < ApplicationRecord
     (Time.find_zone(timezone) || Time.zone).today
   end
 
+  def recurring_commitments(start_date:, end_date:, **options)
+    RecurringCommitments.new(self, start_date: start_date, end_date: end_date, **options)
+  end
+
   private
     def realign_budgets_to_cycle_later
       RealignBudgetsToCycleJob.perform_later(self)

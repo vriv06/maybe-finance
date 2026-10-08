@@ -156,4 +156,54 @@ class BudgetTest < ActiveSupport::TestCase
     assert_equal Date.new(2026, 9, 27), budget.end_date
     assert_equal 5000, budget.budgeted_spending
   end
+
+  test "compares commitments with the latest configured budget when a month has none" do
+    travel_to Date.new(2026, 10, 8)
+    family = families(:dylan_family)
+    family.budgets.destroy_all
+    accounts(:credit_card).entries.delete_all
+    october = family.budgets.create!(start_date: Date.new(2026, 10, 1), end_date: Date.new(2026, 10, 31),
+                                     currency: "USD", budgeted_spending: 1000, expected_income: 2000)
+    family.recurring_transactions.create!(account: accounts(:credit_card), name: "Rent", plan_type: "charge",
+                                          amount: 1200, currency: "USD", start_date: Date.new(2026, 10, 5))
+
+    december = Budget.for_cycle(family, Date.new(2026, 12, 1))
+
+    assert december.new_record?
+    assert_equal BigDecimal("1200"), december.committed_spending
+    assert_equal october, december.basis_budget
+    assert december.uses_reference_budget?
+    assert december.commitments_over_budget?
+    assert_equal BigDecimal("200"), december.commitments_overage
+    assert_equal 120, december.commitments_percent
+  end
+
+  test "commitments percent rounds down while under budget" do
+    travel_to Date.new(2026, 10, 8)
+    family = families(:dylan_family)
+    family.budgets.destroy_all
+    accounts(:credit_card).entries.delete_all
+    october = family.budgets.create!(start_date: Date.new(2026, 10, 1), end_date: Date.new(2026, 10, 31),
+                                     currency: "USD", budgeted_spending: 1000, expected_income: 2000)
+    family.recurring_transactions.create!(account: accounts(:credit_card), name: "Gym", plan_type: "charge",
+                                          amount: BigDecimal("999.50"), currency: "USD", start_date: Date.new(2026, 10, 20))
+
+    assert_not october.commitments_over_budget?
+    assert_equal 99, october.commitments_percent
+    assert_not october.uses_reference_budget?
+  end
+
+  test "past months never borrow another budget" do
+    travel_to Date.new(2026, 10, 8)
+    family = families(:dylan_family)
+    family.budgets.destroy_all
+    family.budgets.create!(start_date: Date.new(2026, 8, 1), end_date: Date.new(2026, 8, 31),
+                           currency: "USD", budgeted_spending: 1000, expected_income: 2000)
+
+    september = Budget.for_cycle(family, Date.new(2026, 9, 1))
+
+    assert september.past?
+    assert_nil september.basis_budget
+    assert_nil september.commitments_percent
+  end
 end
