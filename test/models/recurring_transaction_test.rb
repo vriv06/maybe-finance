@@ -66,9 +66,95 @@ class RecurringTransactionTest < ActiveSupport::TestCase
     link_installment(plan, 3)
 
     assert_equal [ 1, 3 ], plan.generated_numbers.sort
+    assert_equal 0, plan.remaining_payments
+    assert_equal 0, plan.remaining_balance
+    assert_empty plan.upcoming(through: plan.end_date)
+  end
+
+  test "numbers up to the highest generated one count as done after a deletion" do
+    plan = build_plan(start_date: Date.new(2026, 1, 15))
+    plan.save!
+    plan.generate_due!(as_of: Date.new(2026, 2, 20))
+
+    plan.transactions.find_by(installment_number: 1).entry.destroy!
+
+    assert_equal [ 3 ], plan.upcoming(through: plan.end_date).map(&:number)
     assert_equal 1, plan.remaining_payments
-    assert_equal BigDecimal("333.33"), plan.remaining_balance
-    assert_equal [ 2 ], plan.upcoming(through: plan.end_date).map(&:number)
+    assert_equal BigDecimal("333.34"), plan.remaining_balance
+  end
+
+  test "generate_due! does not regenerate a deleted installment" do
+    plan = build_plan(start_date: Date.new(2026, 1, 15))
+    plan.save!
+    plan.generate_due!(as_of: Date.new(2026, 2, 20))
+
+    plan.transactions.find_by(installment_number: 2).entry.destroy!
+
+    assert_equal 0, plan.generate_due!(as_of: Date.new(2026, 2, 20))
+    assert_equal [ 1 ], plan.generated_numbers
+    assert_equal [ 3 ], plan.upcoming(through: plan.end_date).map(&:number)
+  end
+
+  test "generate_due! does not regenerate a deleted charge source" do
+    entry = create_transaction(account: @credit_card, amount: 299, name: "Netflix", date: Date.current)
+    plan = RecurringTransaction.create_from_entry!(entry, plan_type: "charge")
+
+    entry.destroy!
+
+    assert_equal 0, plan.reload.generate_due!
+    assert_equal 0, plan.transactions.count
+  end
+
+  test "destroying the msi purchase removes its plan and installments" do
+    unrelated = create_transaction(account: @credit_card, amount: 50, name: "Coffee", date: Date.current)
+    purchase = create_transaction(account: @credit_card, amount: 3000, name: "Laptop", date: Date.current - 2.months - 5.days)
+    plan = RecurringTransaction.create_from_entry!(purchase, plan_type: "installments", total_payments: 3)
+    assert_equal 2, plan.transactions.where(kind: "installment").count
+
+    Account.any_instance.expects(:sync_later).once
+
+    assert_difference -> { RecurringTransaction.count } => -1, -> { Entry.count } => -3 do
+      purchase.destroy!
+    end
+
+    assert Entry.exists?(unrelated.id)
+    assert_equal 0, Transaction.where(recurring_transaction_id: plan.id).count
+  end
+
+  test "destroying an installments plan reverts the purchase to standard" do
+    purchase = create_transaction(account: @credit_card, amount: 3000, name: "Laptop", date: Date.current - 2.months - 5.days)
+    plan = RecurringTransaction.create_from_entry!(purchase, plan_type: "installments", total_payments: 3)
+
+    assert_difference -> { Entry.count } => -2 do
+      plan.destroy!
+    end
+
+    source = purchase.entryable.reload
+    assert source.standard?
+    assert_nil source.recurring_transaction_id
+  end
+
+  test "destroying a charge plan keeps its transactions unlinked" do
+    plan = build_plan(plan_type: "charge", total_payments: nil, amount: 299, start_date: Date.new(2026, 1, 10))
+    plan.save!
+    plan.generate_due!(as_of: Date.new(2026, 2, 10))
+    ids = plan.transactions.pluck(:id)
+
+    assert_no_difference -> { Entry.count } do
+      plan.destroy!
+    end
+
+    assert_equal [ nil ], Transaction.where(id: ids).pluck(:recurring_transaction_id).uniq
+  end
+
+  test "destroying an account with an msi purchase removes everything" do
+    purchase = create_transaction(account: @credit_card, amount: 3000, name: "Laptop", date: Date.current - 2.months - 5.days)
+    RecurringTransaction.create_from_entry!(purchase, plan_type: "installments", total_payments: 3)
+
+    assert_difference -> { RecurringTransaction.count } => -1 do
+      Account.find(@credit_card.id).destroy!
+    end
+    assert_equal 0, Entry.where(account_id: @credit_card.id).count
   end
 
   test "remaining balance is a decimal zero for charges" do

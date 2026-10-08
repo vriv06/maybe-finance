@@ -8,6 +8,8 @@ class Entry < ApplicationRecord
   belongs_to :import, optional: true
 
   delegated_type :entryable, types: Entryable::TYPES, dependent: :destroy
+  # Runs after the entryable is destroyed. Account cascades skip it: they destroy every entry and plan anyway.
+  after_destroy :destroy_installment_plan, if: :msi_purchase_with_plan?, unless: :destroyed_by_association
   accepts_nested_attributes_for :entryable
 
   validates :date, :name, :amount, :currency, presence: true
@@ -96,4 +98,14 @@ class Entry < ApplicationRecord
       all.size
     end
   end
+
+  private
+    def msi_purchase_with_plan?
+      transaction? && entryable.msi_purchase? && entryable.recurring_transaction_id.present?
+    end
+
+    # Deleting an MSI purchase removes its debt, so its plan and installments go with it
+    def destroy_installment_plan
+      RecurringTransaction.find_by(id: entryable.recurring_transaction_id)&.destroy!
+    end
 end

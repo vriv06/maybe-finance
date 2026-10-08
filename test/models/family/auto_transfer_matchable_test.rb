@@ -18,6 +18,17 @@ class Family::AutoTransferMatchableTest < ActiveSupport::TestCase
     end
   end
 
+  test "does not match installment plan transactions" do
+    create_transaction(date: Date.current, account: @depository, amount: 500)
+    create_transaction(date: Date.current, account: @credit_card, amount: -500, kind: "installment")
+    create_transaction(date: Date.current, account: @depository, amount: -700)
+    create_transaction(date: Date.current, account: @credit_card, amount: 700, kind: "msi_purchase")
+
+    assert_no_difference -> { Transfer.count } do
+      @family.auto_match_transfers!
+    end
+  end
+
   test "auto-matches multi-currency transfers" do
     load_exchange_prices
     create_transaction(date: 1.day.ago.to_date, account: @depository, amount: 500)

@@ -8,7 +8,10 @@ class RecurringTransaction < ApplicationRecord
   belongs_to :account
   belongs_to :category, optional: true
   belongs_to :merchant, optional: true
+  # Runs before the nullify below so installments are removed and the purchase reverted first
+  before_destroy :release_transactions
   has_many :transactions, dependent: :nullify
+  after_destroy :sync_account_later, unless: :destroyed_by_association
 
   validates :name, :currency, :start_date, presence: true
   validates :plan_type, inclusion: { in: PLAN_TYPES }
@@ -76,23 +79,26 @@ class RecurringTransaction < ApplicationRecord
     transactions.where.not(installment_number: nil).pluck(:installment_number)
   end
 
+  # Every number up to this one is done (generated, or generated and later deleted).
+  # Deleted occurrences are never regenerated, so the gap they leave is permanent.
+  def last_handled_number
+    [ generated_numbers.max || 0, numbers_generated_through(last_generated_on) ].max
+  end
+
   def remaining_payments
-    total_payments && total_payments - generated_numbers.size
+    total_payments && [ total_payments - last_handled_number, 0 ].max
   end
 
   def remaining_balance
     return BigDecimal("0") unless installments?
 
-    amount - generated_numbers.sum { |number| occurrence_amount(number) }
+    amount - (1..last_handled_number).sum(BigDecimal("0")) { |number| occurrence_amount(number) }
   end
 
   def upcoming(through:)
-    taken = generated_numbers.to_set
-
-    (1..).lazy
+    ((last_handled_number + 1)..).lazy
       .map { |number| Occurrence.new(number: number, date: occurrence_date(number), amount: occurrence_amount(number)) }
       .take_while { |occurrence| occurrence.date <= through && (total_payments.nil? || occurrence.number <= total_payments) }
-      .reject { |occurrence| taken.include?(occurrence.number) }
       .to_a
   end
 
@@ -140,6 +146,27 @@ class RecurringTransaction < ApplicationRecord
     end
 
     def fully_generated?
-      total_payments.present? && generated_numbers.size >= total_payments
+      total_payments.present? && last_handled_number >= total_payments
+    end
+
+    # generate_due! creates every occurrence dated on or before the day it ran, so those numbers are done
+    def numbers_generated_through(date)
+      return 0 if date.nil?
+
+      number = 0
+      number += 1 while occurrence_date(number + 1) <= date && (total_payments.nil? || number < total_payments)
+      number
+    end
+
+    def release_transactions
+      return unless installments?
+
+      installment_ids = transactions.where(kind: "installment").where.not(installment_number: nil).select(:id)
+      Entry.where(entryable_type: "Transaction", entryable_id: installment_ids).find_each(&:destroy!)
+      transactions.where(kind: "msi_purchase").find_each(&:release_from_plan!)
+    end
+
+    def sync_account_later
+      account.sync_later
     end
 end

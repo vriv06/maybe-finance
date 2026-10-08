@@ -22,6 +22,9 @@ class Transaction < ApplicationRecord
 
   BUDGET_EXCLUDED_KINDS = %w[funds_movement one_time cc_payment msi_purchase].freeze
   BALANCE_EXCLUDED_KINDS = %w[installment].freeze
+  PLAN_LOCKED_KINDS = %w[msi_purchase installment].freeze
+
+  validate :plan_kind_unchanged, on: :update
 
   def self.budget_excluded_kinds_sql
     BUDGET_EXCLUDED_KINDS.map { |kind| connection.quote(kind) }.join(", ")
@@ -30,6 +33,14 @@ class Transaction < ApplicationRecord
   # Overarching grouping method for all transfer-type transactions
   def transfer?
     funds_movement? || cc_payment? || loan_payment?
+  end
+
+  # Only the plan lifecycle may unlock a plan-owned kind: its purchase counts as normal spending again
+  def release_from_plan!
+    @releasing_from_plan = true
+    update!(kind: "standard", recurring_transaction: nil)
+  ensure
+    @releasing_from_plan = false
   end
 
   def set_category!(category)
@@ -41,4 +52,12 @@ class Transaction < ApplicationRecord
 
     update!(category: category)
   end
+
+  private
+    def plan_kind_unchanged
+      return if @releasing_from_plan || !will_save_change_to_kind?
+      return unless PLAN_LOCKED_KINDS.include?(kind_in_database)
+
+      errors.add(:kind, "cannot be changed for a transaction that belongs to an installment plan")
+    end
 end
