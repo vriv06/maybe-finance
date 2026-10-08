@@ -1,6 +1,6 @@
 # Design State: Pagos recurrentes y MSI
 
-_Last updated: 2026-10-06 by orchestrator (discovery complete)_
+_Last updated: 2026-10-08 by orchestrator (Phase A done)_
 
 ## Brief
 - **Problem:** Compras a MSI y suscripciones se capturan a mano cada mes; no hay visibilidad de deuda MSI ni flujo comprometido.
@@ -43,6 +43,11 @@ No taste profile — craft evaluation uses general quality standards only. Seña
 | 2026-10-06 | user | Convertir compra pasada a MSI genera cuotas vencidas con su fecha original | Presupuestos de meses pasados quedan correctos |
 | 2026-10-06 | user | Editar/cancelar regla solo afecta cuotas futuras | Historia generada no cambia |
 | 2026-10-06 | user | Estrategia aprobada; inclusive-personas omitido (single user, espectro ya en brief) | — |
+| 2026-10-08 | orchestrator | Exclusiones de gasto en un solo helper SQL `Transaction.budget_excluded_kinds_sql`, usado por `IncomeStatement::Totals`, `FamilyStats`, `CategoryStats` y `Transaction::Search#totals` | Una verdad por número; elimina 4 listas escritas a mano |
+| 2026-10-08 | orchestrator | Exclusión de saldo en `Balance::SyncCache#converted_entries` (rechaza `installment`) | Es el único feed de entries de los 3 calculadores de saldo |
+| 2026-10-08 | orchestrator | `installment_number` + índice único `(recurring_transaction_id, installment_number)` como llave de idempotencia | Reintentos y requests concurrentes no duplican cuotas |
+| 2026-10-08 | orchestrator | Disparador perezoso: `before_action` (`RecurringGeneration`) encola `GenerateRecurringTransactionsJob` máx. 1 vez/familia/día vía `families.recurring_generated_on`, solo con planes activos | Cero CPU en ocio; se incluye en línea propia después de `Authentication` (include multi-módulo aplica en orden inverso) |
+| 2026-10-08 | orchestrator | `belongs_to :recurring_transaction` se movió de Task 2 a Task 5; Account `dependent: :destroy`, Category/Merchant `dependent: :nullify` para planes | Sin el modelo rompía `TransactionImport`; FKs impedían borrar cuentas/categorías con planes |
 
 ## Open Questions
 - [ ] Nombre del concepto en UI (inglés) — content-writer (propuesta: "Recurring payment"; tipos "Monthly charge" / "Installments (MSI)")
@@ -53,17 +58,17 @@ No taste profile — craft evaluation uses general quality standards only. Seña
 - [x] Convertir transacción existente → sí, desde `transactions/show`
 - [x] Marcar compra original → `kind: msi_purchase`
 
-## Status / Pending (2026-10-06)
+## Status / Pending (2026-10-08)
 
-**Done:** discovery, brief, strategy, design plan, superpowers Phase A plan, Phase A Task 1 (migration file, commit `ebf96a96`).
+**Done:** discovery, brief, strategy, design plan, superpowers Phase A plan, **Phase A (Tasks 1–9) done** — commits `ebf96a96..HEAD` on `feature/meses-sin-intereses`. Migration applied on `maybe_test` and `maybe_production`. Tests `test/models test/jobs test/controllers`: same 124 pre-existing failures as before Phase A (111 are `tailwind.css` not built in the bind-mounted source), no new ones. Rubocop clean.
 
-**Blocked on user:** run the migration (test DB + dev DB) — `schema.rb` not yet regenerated:
-- `docker compose -f compose.yaml run --rm -v "$PWD:/rails" -e RAILS_ENV=test -e POSTGRES_DB=maybe_test web bin/rails db:migrate`
-- `docker compose -f compose.yaml run --rm -v "$PWD:/rails" web bin/rails db:migrate`
+**Minor items for the final review** are in `.superpowers/sdd/progress.md` (git-excluded).
 
-**Next (code):** Phase A Tasks 2–9 per `docs/superpowers/plans/2026-10-06-recurring-transactions-phase-a.md` (subagent-driven). Ledger lives in `.superpowers/sdd/progress.md` (git-excluded).
+**Next (code):** superpowers plans for Phase B (capture UI: `DS::Disclosure` fields in the transaction form + convert from `transactions/show`, calling `RecurringTransaction.create_from_entry!`) and Phase C (commitments view on the credit card + one line in budget).
 
-**Next (Designpowers workflow):** light inclusive-personas + design-taste → content-writer, interaction-design, design-lead → superpowers plans for Phase B (capture) and Phase C (views) → design-builder + screenshot checkpoint → critic / accessibility-reviewer / heuristic-evaluator + reconciliation + fix round → synthetic-user-testing → verification-before-shipping → team presentation → design-retrospective.
+**Next (Designpowers workflow):** design-taste → content-writer (open: UI name, proposal "Recurring payment") → interaction-design → design-lead → Phase B/C plans → design-builder + screenshot checkpoint → critic / accessibility-reviewer / heuristic-evaluator + reconciliation + fix round → synthetic-user-testing → verification-before-shipping → team presentation → design-retrospective.
+
+**Test environment:** web+worker of project `maybe-finance-dev` on http://localhost:3001 pointed at `maybe_test` (override file in the session scratchpad sets `POSTGRES_DB: maybe_test` and port 3001). Running `bin/rails test` reloads fixtures in `maybe_test`.
 
 **Infra:** moving to a dedicated server; compose now requires `SECRET_KEY_BASE` in `.env` (commit `6e050109` on main).
 
@@ -74,7 +79,7 @@ No taste profile — craft evaluation uses general quality standards only. Seña
 | Brief | docs/designpowers/briefs/2026-10-06-pagos-recurrentes-msi.md | Approved |
 | Strategy | docs/designpowers/strategy/2026-10-06-pagos-recurrentes-msi-strategy.md | Approved |
 | Plan (design) | docs/designpowers/plans/2026-10-06-pagos-recurrentes-msi-plan.md | Draft |
-| Plan (code, Phase A — superpowers) | docs/superpowers/plans/2026-10-06-recurring-transactions-phase-a.md | Draft |
+| Plan (code, Phase A — superpowers) | docs/superpowers/plans/2026-10-06-recurring-transactions-phase-a.md | Phase A done |
 
 ## Design Debt Register
 _Items: 0 | Critical: 0 | Oldest: —_
