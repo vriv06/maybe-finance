@@ -72,10 +72,46 @@ class RecurringTransaction < ApplicationRecord
     update!(status: "cancelled")
   end
 
+  def generate_due!(as_of: Date.current)
+    return 0 unless status == "active"
+
+    created = upcoming(through: as_of).count { |occurrence| create_occurrence(occurrence) }
+
+    update!(last_generated_on: as_of, status: fully_generated? ? "completed" : status)
+    account.sync_later if created.positive?
+
+    created
+  end
+
   private
     def installments_require_credit_card
       return unless installments? && account
 
       errors.add(:account, "must be a credit card for installments") unless account.accountable_type == "CreditCard"
+    end
+
+    def create_occurrence(occurrence)
+      Entry.transaction(requires_new: true) do
+        account.entries.create!(
+          name: name,
+          date: occurrence.date,
+          amount: occurrence.amount,
+          currency: currency,
+          entryable: Transaction.new(
+            kind: installments? ? "installment" : "standard",
+            category: category,
+            merchant: merchant,
+            recurring_transaction: self,
+            installment_number: occurrence.number
+          )
+        )
+      end
+      true
+    rescue ActiveRecord::RecordNotUnique
+      false
+    end
+
+    def fully_generated?
+      total_payments.present? && generated_numbers.size >= total_payments
     end
 end

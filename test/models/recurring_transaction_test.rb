@@ -108,6 +108,52 @@ class RecurringTransactionTest < ActiveSupport::TestCase
     assert_nil plan.reload.merchant_id
   end
 
+  test "generate_due! backfills missed occurrences with their original dates" do
+    plan = build_plan(start_date: Date.new(2026, 1, 15))
+    plan.save!
+
+    assert_equal 2, plan.generate_due!(as_of: Date.new(2026, 2, 20))
+
+    entries = @credit_card.entries.order(:date)
+    assert_equal [ Date.new(2026, 1, 15), Date.new(2026, 2, 15) ], entries.map(&:date)
+    assert entries.all? { |entry| entry.entryable.installment? }
+  end
+
+  test "generate_due! is idempotent" do
+    plan = build_plan(start_date: Date.new(2026, 1, 15))
+    plan.save!
+    plan.generate_due!(as_of: Date.new(2026, 2, 20))
+
+    assert_equal 0, plan.generate_due!(as_of: Date.new(2026, 2, 20))
+    assert_equal 2, plan.transactions.count
+  end
+
+  test "generate_due! completes the plan after the last payment" do
+    plan = build_plan(start_date: Date.new(2026, 1, 15))
+    plan.save!
+    plan.generate_due!(as_of: Date.new(2026, 6, 1))
+
+    assert_equal "completed", plan.reload.status
+    assert_equal 0, plan.remaining_payments
+    assert_equal 0, plan.remaining_balance
+  end
+
+  test "generate_due! skips cancelled plans" do
+    plan = build_plan(status: "cancelled")
+    plan.save!
+
+    assert_equal 0, plan.generate_due!(as_of: Date.new(2026, 6, 1))
+  end
+
+  test "charges generate standard transactions" do
+    plan = build_plan(plan_type: "charge", total_payments: nil, amount: 299, start_date: Date.new(2026, 1, 10))
+    plan.save!
+    plan.generate_due!(as_of: Date.new(2026, 2, 10))
+
+    assert_equal 2, plan.transactions.count
+    assert plan.transactions.all?(&:standard?)
+  end
+
   private
     def link_installment(plan, number)
       create_transaction(
