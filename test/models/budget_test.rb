@@ -204,6 +204,19 @@ class BudgetTest < ActiveSupport::TestCase
     assert_not october.uses_reference_budget?
   end
 
+  test "the basis budget is looked up once per instance" do
+    travel_to Date.new(2026, 10, 8)
+    family = families(:dylan_family)
+    family.budgets.destroy_all
+    family.budgets.create!(start_date: Date.new(2026, 10, 1), end_date: Date.new(2026, 10, 31),
+                           currency: "USD", budgeted_spending: 1000, expected_income: 2000)
+    december = Budget.for_cycle(family, Date.new(2026, 12, 1))
+
+    december.expects(:latest_initialized_budget_before).once.returns(nil)
+
+    2.times { december.basis_budget }
+  end
+
   test "past months never borrow another budget" do
     travel_to Date.new(2026, 10, 8)
     family = families(:dylan_family)

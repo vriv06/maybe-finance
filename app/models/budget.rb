@@ -328,10 +328,15 @@ class Budget < ApplicationRecord
   # The budget commitments are compared with: this one once set up, otherwise (current and
   # future months only) the latest set-up budget before it
   def basis_budget
-    return self if initialized?
-    return nil if past?
+    return @basis_budget if defined?(@basis_budget)
 
-    latest_initialized_budget_before
+    @basis_budget = if initialized?
+      self
+    elsif past?
+      nil
+    else
+      latest_initialized_budget_before
+    end
   end
 
   def budget_basis

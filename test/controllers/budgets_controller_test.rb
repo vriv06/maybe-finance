@@ -71,6 +71,15 @@ class BudgetsControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
+  test "a borrowed future month names the basis month in the over-budget alert" do
+    get budget_url("dec-2026"), headers: @frame
+
+    assert_response :success
+    assert_includes response.body, "Recurring payments are $200.00 over your October 2026 budget"
+    assert_not_includes response.body, "over your December 2026 budget"
+    assert_includes response.body, %(aria-label="Review December 2026 budget")
+  end
+
   test "a future category drawer lists its commitments" do
     get budget_budget_category_url("dec-2026", BudgetCategory.uncategorized.id), headers: { "Turbo-Frame" => "drawer" }
 

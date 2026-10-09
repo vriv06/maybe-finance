@@ -21,7 +21,7 @@
     </h3>
 
     <p class="tabular-nums">
-      <span class="block text-xl font-medium text-primary"><%= Money.new(budget.committed_spending, budget.currency).format %></span>
+      <span class="block text-xl font-medium text-primary"><%= budget.committed_spending_money.format %></span>
       <span class="block text-sm text-secondary">committed to recurring payments</span>
     </p>
 
@@ -48,7 +48,7 @@
 
       <% if over %>
         <% alert_body = capture do %>
-          <p class="font-medium text-pretty tabular-nums">Recurring payments are <%= Money.new(budget.commitments_overage, budget.currency).format %> over your <%= budget.name %> budget</p>
+          <p class="font-medium text-pretty tabular-nums">Recurring payments are <%= budget.commitments_overage_money.format %> over your <%= basis_name %> budget</p>
           <%= render DS::Link.new(
             text: "Review budget",
             variant: "outline",
