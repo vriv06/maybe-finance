@@ -1,0 +1,12 @@
+<%# locals: (entry:, step:, recurrence: nil, error: nil, autofocus: false) %>
+
+<%= turbo_frame_tag dom_id(entry, :recurrence) do %>
+  <% case step %>
+  <% when :closed %>
+    <%= render "transactions/recurrences/closed", entry: entry, autofocus: autofocus %>
+  <% when :fields %>
+    <%= render "transactions/recurrences/fields", entry: entry, recurrence: recurrence, error: error, autofocus: autofocus %>
+  <% when :confirm %>
+    <%= render "transactions/recurrences/confirm", entry: entry, recurrence: recurrence, error: error %>
+  <% end %>
+<% end %>

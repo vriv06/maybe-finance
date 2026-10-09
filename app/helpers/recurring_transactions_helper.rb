@@ -122,4 +122,15 @@ module RecurringTransactionsHelper
   def recurring_credit_account_ids
     Current.family.accounts.manual.active.where(accountable_type: "CreditCard").pluck(:id)
   end
+
+  # Which "Recurring payment" block the drawer's Settings shows (interaction §3.1 + canvas D14)
+  def recurrence_block_state(entry)
+    transaction = entry.transaction
+    return :linked if transaction.recurring_transaction
+    return nil if entry.amount.negative? || transaction.transfer? || transaction.transfer.present?
+    return nil unless entry.account.manual? && entry.account.active?
+    return :one_time if transaction.one_time?
+
+    RecurringTransaction.ineligibility_reason(entry).nil? ? :editable : nil
+  end
 end

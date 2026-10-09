@@ -105,6 +105,10 @@
         </div>
       <% end %>
       <div class="pb-4">
+        <% if recurrence_block_state(@entry) %>
+          <%= render "transactions/recurrences/recurrence", entry: @entry, step: :closed %>
+        <% end %>
+
         <%= styled_form_with model: @entry,
               url: transaction_path(@entry),
               class: "p-3",

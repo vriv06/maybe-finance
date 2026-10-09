@@ -1,0 +1,44 @@
+<%# locals: (entry:, recurrence:, error: nil, autofocus: false) %>
+
+<% credit_card = entry.account.credit_card? %>
+<% block_error = error || (recurrence && (recurrence.errors[:base] + recurrence.errors[:account]).first) %>
+
+<div class="p-3">
+  <h4 class="text-sm text-primary">Recurring payment</h4>
+
+  <%= form_with url: new_transaction_recurrence_path(entry), method: :get,
+        class: "mt-3 rounded-lg bg-container-inset p-3 space-y-3",
+        data: {
+          controller: "recurring-form",
+          recurring_form_preview_url_value: preview_recurring_transactions_path(entry_id: entry.id),
+          recurring_form_account_id_value: entry.account_id,
+          recurring_form_credit_account_ids_value: credit_card ? [ entry.account_id ] : [],
+          recurring_form_unavailable_text_value: "We couldn't calculate this. You can still save.",
+          recurring_form_credit_only_text_value: "Installments only work on credit cards.",
+          action: "input->recurring-form#schedulePreview change->recurring-form#schedulePreview"
+        } do %>
+    <% if block_error %>
+      <div role="alert">
+        <%= render DS::Alert.new(message: block_error, variant: :error) %>
+      </div>
+    <% end %>
+
+    <%= render "transactions/recurrence_fields",
+               recurrence: recurrence,
+               installments_available: credit_card,
+               default_first_payment: entry.date.next_month,
+               show_base_error: false,
+               autofocus_type: autofocus %>
+
+    <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+      <%= render DS::Link.new(text: "Cancel", variant: "ghost", href: transaction_recurrence_path(entry)) %>
+      <%= render DS::Button.new(
+        text: "Review",
+        type: "submit",
+        disabled: recurrence&.plan_type.blank?,
+        aria: { label: "Review recurring payment" },
+        data: { recurring_form_target: "review" }
+      ) %>
+    </div>
+  <% end %>
+</div>
