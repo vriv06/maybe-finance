@@ -129,6 +129,7 @@ module RecurringTransactionsHelper
     return :linked if transaction.recurring_transaction
     return nil if entry.amount.negative? || transaction.transfer? || transaction.transfer.present?
     return nil unless entry.account.manual? && entry.account.active?
+    return nil if entry.currency != entry.account.family.currency
     return :one_time if transaction.one_time?
 
     RecurringTransaction.ineligibility_reason(entry).nil? ? :editable : nil

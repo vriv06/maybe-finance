@@ -63,6 +63,13 @@ class RecurringTransactionsHelperTest < ActionView::TestCase
     assert_equal "One time", recurring_status_text(create_transaction(account: @card, amount: 10).transaction)
   end
 
+  test "a foreign-currency one-time expense shows no recurrence block" do
+    entry = create_transaction(account: @card, amount: 100, currency: "EUR")
+    entry.entryable.update!(kind: "one_time")
+
+    assert_nil recurrence_block_state(entry)
+  end
+
   private
     def build(plan_type: "installments", amount: 1000, total_payments: 3, start_date: Date.new(2026, 11, 8))
       RecurringTransaction.new(family: @family, account: @card, name: "Plan", plan_type: plan_type,

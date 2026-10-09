@@ -20,7 +20,7 @@
       <%= hidden_field_tag "recurrence[start_date]", recurrence.start_date.iso8601, id: nil %>
     <% end %>
 
-    <h4 tabindex="-1" autofocus class="text-sm font-medium text-primary tabular-nums rounded outline-none focus-visible:ring-4 focus-visible:ring-alpha-black-200">
+    <h4 tabindex="-1" autofocus class="text-sm font-medium text-primary tabular-nums rounded">
       <% if recurrence.installments? %>
         Split <%= total %> into <%= recurrence.total_payments %> installments
       <% else %>
