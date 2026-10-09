@@ -2,6 +2,7 @@ class RecurringTransaction < ApplicationRecord
   PLAN_TYPES = %w[charge installments].freeze
   STATUSES = %w[active cancelled completed].freeze
   MAX_INSTALLMENTS = 48
+  MAX_CHARGE_PAYMENTS = 600
 
   INELIGIBILITY_MESSAGES = {
     transfer: "Transfers can't repeat.",
@@ -215,7 +216,7 @@ class RecurringTransaction < ApplicationRecord
         unless whole&.between?(2, MAX_INSTALLMENTS)
           errors.add(:total_payments, "Enter 2 to #{MAX_INSTALLMENTS} installments.")
         end
-      elsif raw.present? && !(whole && whole >= 1)
+      elsif raw.present? && !whole&.between?(1, MAX_CHARGE_PAYMENTS)
         errors.add(:total_payments, "Enter a whole number, or leave it empty.")
       end
     end

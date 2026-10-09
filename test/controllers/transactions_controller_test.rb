@@ -262,6 +262,32 @@ end
     assert_select "input#recurrence_total_payments_installments[autofocus]"
   end
 
+  test "an out-of-range monthly charge count is refused, not a 500" do
+    travel_to Date.new(2026, 10, 8)
+
+    assert_no_difference [ "Entry.count", "RecurringTransaction.count" ] do
+      post transactions_url, params: {
+        entry: recurring_entry_params(accounts(:depository), amount: 50),
+        recurrence: { plan_type: "charge", total_payments: "3000000000" }
+      }, headers: { "Turbo-Frame" => "modal" }
+    end
+
+    assert_response :unprocessable_entity
+    assert_includes response.body, "Enter a whole number, or leave it empty."
+  end
+
+  test "a 422 keeps the submitted date" do
+    travel_to Date.new(2026, 10, 8)
+
+    post transactions_url, params: {
+      entry: recurring_entry_params(accounts(:credit_card), amount: 15000).merge(date: "2026-09-01"),
+      recurrence: { plan_type: "installments", total_payments: "1", start_date: "2026-11-08" }
+    }, headers: { "Turbo-Frame" => "modal" }
+
+    assert_response :unprocessable_entity
+    assert_select "input[name='entry[date]'][value='2026-09-01']"
+  end
+
   test "an unexpected failure creating the plan saves nothing and shows the generic message" do
     RecurringTransaction.expects(:create_from_entry!).raises(ActiveRecord::RecordInvalid.new(RecurringTransaction.new))
 

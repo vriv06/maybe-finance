@@ -304,6 +304,13 @@ class RecurringTransactionTest < ActiveSupport::TestCase
                  build_plan(plan_type: "charge", total_payments: "abc").tap(&:validate).errors[:total_payments]
   end
 
+  test "a charge's end count beyond the integer column is invalid" do
+    plan = build_plan(plan_type: "charge", total_payments: "3000000000")
+
+    assert_not plan.valid?
+    assert_equal [ "Enter a whole number, or leave it empty." ], plan.errors[:total_payments]
+  end
+
   test "the first payment can't be missing or before the purchase" do
     purchase = create_transaction(account: @credit_card, amount: 1200, date: Date.new(2026, 10, 8))
 

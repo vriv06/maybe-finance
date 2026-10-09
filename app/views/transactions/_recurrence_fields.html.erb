@@ -83,7 +83,7 @@
               (recurrence&.total_payments_before_type_cast if plan_type == "charge"),
               id: "recurrence_total_payments_charge",
               class: "form-field__input tabular-nums w-16",
-              autocomplete: "off", inputmode: "numeric", min: 1, step: 1, placeholder: "—",
+              autocomplete: "off", inputmode: "numeric", min: 1, max: RecurringTransaction::MAX_CHARGE_PAYMENTS, step: 1, placeholder: "—",
               disabled: plan_type != "charge",
               autofocus: first_invalid == :total_payments && plan_type == "charge",
               "aria-invalid": (payments_error.present? if plan_type == "charge"),
