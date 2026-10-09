@@ -310,6 +310,98 @@ end
     assert_not_includes response.body, "Open matcher"
   end
 
+  test "the server keeps a generated installment's amount" do
+    travel_to Date.new(2026, 10, 8)
+    installment = create_installment_plan.transactions.find_by(installment_number: 1).entry
+
+    patch transaction_url(installment), params: {
+      entry: { amount: "1", nature: "inflow" }
+    }, headers: { "Turbo-Frame" => "drawer" }
+
+    assert_response :unprocessable_entity
+    assert_includes response.body, "Set by the plan."
+    assert_equal 1000, installment.reload.amount
+  end
+
+  test "the server keeps an installment purchase's amount" do
+    travel_to Date.new(2026, 10, 8)
+    plan = create_installment_plan
+    purchase = plan.transactions.find_by(kind: "msi_purchase").entry
+
+    patch transaction_url(purchase), params: { entry: { amount: "1" } }, headers: { "Turbo-Frame" => "drawer" }
+
+    assert_response :unprocessable_entity
+    assert_equal 3000, purchase.reload.amount
+  end
+
+  test "an ordinary transaction's amount still updates" do
+    entry = create_transaction(amount: 100, account: accounts(:depository))
+
+    patch transaction_url(entry), params: { entry: { amount: "250", nature: "outflow" } }
+
+    assert_equal 250, entry.reload.amount
+  end
+
+  test "a generated installment's date can still change" do
+    travel_to Date.new(2026, 10, 8)
+    installment = create_installment_plan.transactions.find_by(installment_number: 1).entry
+
+    patch transaction_url(installment), params: { entry: { date: "2026-09-12" } }
+
+    assert_equal Date.new(2026, 9, 12), installment.reload.date
+  end
+
+  test "a rejected kind change on an installment purchase keeps the purchase copy" do
+    travel_to Date.new(2026, 10, 8)
+    purchase = create_installment_plan.transactions.find_by(kind: "msi_purchase").entry
+
+    patch transaction_url(purchase), params: {
+      entry: { entryable_attributes: { id: purchase.entryable_id, kind: "one_time" } }
+    }, headers: { "Turbo-Frame" => "drawer" }
+
+    assert_response :unprocessable_entity
+    assert_includes response.body, "To change it, delete this purchase and add it again."
+    assert_includes response.body, "Also deletes its 3 installments."
+  end
+
+  test "the drawer of an installment purchase explains debt versus spending" do
+    travel_to Date.new(2026, 10, 8)
+    purchase = create_installment_plan.transactions.find_by(kind: "msi_purchase").entry
+
+    get transaction_url(purchase), headers: { "Turbo-Frame" => "drawer" }
+
+    assert_response :success
+    assert_includes response.body, "Adds to your card balance, not to spending. Each installment counts as spending."
+    assert_includes response.body, "Also deletes its 3 installments."
+    assert_not_includes response.body, "One-time Expense"
+  end
+
+  test "the drawer of an ordinary transaction keeps its toggles and has no provenance" do
+    entry = create_transaction(amount: 100, account: accounts(:depository))
+
+    get transaction_url(entry), headers: { "Turbo-Frame" => "drawer" }
+
+    assert_response :success
+    assert_includes response.body, "One-time Expense"
+    assert_includes response.body, "Open matcher"
+    assert_not_includes response.body, dom_id(entry, :provenance)
+  end
+
+  test "the drawer of a monthly charge row keeps its toggles" do
+    travel_to Date.new(2026, 10, 8)
+    post transactions_url, params: {
+      entry: recurring_entry_params(accounts(:depository), amount: 299),
+      recurrence: { plan_type: "charge", total_payments: "" }
+    }
+    entry = Entry.find_by!(name: "iPad Air")
+
+    get transaction_url(entry), headers: { "Turbo-Frame" => "drawer" }
+
+    assert_response :success
+    assert_includes response.body, "Exclude"
+    assert_includes response.body, "One-time Expense"
+  end
+
   test "the list explains generated rows" do
     travel_to Date.new(2026, 10, 8)
     create_installment_plan

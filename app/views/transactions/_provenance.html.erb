@@ -5,7 +5,7 @@
                             frame: :modal, aria: { label: "View plan for #{plan.name}" }) %>
 <% focus_classes = "outline-none focus-visible:ring-4 focus-visible:ring-alpha-black-200" %>
 
-<% if transaction.msi_purchase? %>
+<% if transaction.kind_in_database == "msi_purchase" %>
   <%= tag.div id: dom_id(entry, :provenance), tabindex: "-1", autofocus: focus || nil,
               class: "mb-4 flex items-start gap-3 rounded-lg border border-tertiary p-3 #{focus_classes}" do %>
     <%= icon "credit-card" %>

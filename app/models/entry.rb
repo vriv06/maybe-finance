@@ -15,6 +15,7 @@ class Entry < ApplicationRecord
   validates :date, :name, :amount, :currency, presence: true
   validates :date, uniqueness: { scope: [ :account_id, :entryable_type ] }, if: -> { valuation? }
   validates :date, comparison: { greater_than: -> { min_supported_date } }
+  validate :plan_amount_unchanged, on: :update
 
   scope :visible, -> {
     joins(:account).where(accounts: { status: [ "draft", "active" ] })
@@ -100,6 +101,16 @@ class Entry < ApplicationRecord
   end
 
   private
+    # Plan-owned rows (generated installments, the installment purchase) keep the amount the plan set
+    def plan_amount_unchanged
+      return unless transaction? && will_save_change_to_amount?
+
+      case entryable.kind_in_database
+      when "installment" then errors.add(:amount, "Set by the plan.")
+      when "msi_purchase" then errors.add(:amount, "To change it, delete this purchase and add it again.")
+      end
+    end
+
     def msi_purchase_with_plan?
       transaction? && entryable.msi_purchase? && entryable.recurring_transaction_id.present?
     end

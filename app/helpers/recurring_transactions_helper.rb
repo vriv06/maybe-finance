@@ -73,7 +73,7 @@ module RecurringTransactionsHelper
   # C1 provenance line of a transaction linked to a plan
   def recurring_provenance_label(transaction)
     plan = transaction.recurring_transaction
-    return "Paid in #{plan.total_payments} installments" if transaction.msi_purchase?
+    return "Paid in #{plan.total_payments} installments" if transaction.kind_in_database == "msi_purchase"
 
     recurring_occurrence_label(plan, transaction.installment_number)
   end

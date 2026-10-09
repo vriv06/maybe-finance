@@ -6,6 +6,7 @@
   <% dialog.with_body do %>
     <% plan = @entry.transaction.recurring_transaction %>
     <% locked = Transaction::PLAN_LOCKED_KINDS.include?(@entry.transaction.kind_in_database) %>
+    <% msi_purchase = @entry.transaction.kind_in_database == "msi_purchase" %>
 
     <% if plan %>
       <%= render "transactions/provenance", entry: @entry, plan: plan, focus: @focus_provenance %>
@@ -42,7 +43,7 @@
                 </div>
                 <p id="<%= help_id %>" class="text-xs text-secondary flex items-start gap-1">
                   <%= icon "lock", size: "xs", class: "mt-0.5" %>
-                  <span><%= @entry.transaction.msi_purchase? ? "To change it, delete this purchase and add it again." : "Set by the plan." %></span>
+                  <span><%= msi_purchase ? "To change it, delete this purchase and add it again." : "Set by the plan." %></span>
                 </p>
               </div>
             <% else %>
@@ -130,8 +131,10 @@
         </div>
       <% end %>
 
+      <% recurrence_block = recurrence_block_state(@entry) %>
+      <% if recurrence_block || !locked %>
       <div class="pb-4">
-        <% if recurrence_block_state(@entry) %>
+        <% if recurrence_block %>
           <%= render "transactions/recurrences/recurrence", entry: @entry, step: :closed %>
         <% end %>
 
@@ -151,6 +154,7 @@
           <% end %>
         <% end %>
       </div>
+      <% end %>
 
       <div class="pb-4">
         <% unless locked %>
@@ -190,7 +194,7 @@
         <% end %>
 
         <% delete_confirm, delete_subtitle =
-             if @entry.transaction.msi_purchase? && plan
+             if msi_purchase && plan
                [ CustomConfirm.for_msi_purchase_deletion(@entry), "Also deletes its #{plan.total_payments} installments." ]
              elsif plan
                [ CustomConfirm.for_occurrence_deletion(@entry), t(".delete_subtitle") ]
