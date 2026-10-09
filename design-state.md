@@ -100,6 +100,8 @@ Detalle: docs/designpowers/strategy/2026-10-06-pagos-recurrentes-msi-strategy.md
 | 2026-10-08 | user | La advertencia de presupuesto sale de la ficha de tarjeta (C2) y se mueve al momento de captura: al elegir Installments en una transacción nueva se muestra la proyección del presupuesto de los próximos meses con esa compra incluida (ya comprometido + esta compra vs presupuesto), y el monto excedido en rojo (`text-destructive`) | Decidir antes de comprar; supersede "color de advertencia escaso" para este caso (rojo en vez de amarillo) |
 | 2026-10-08 | orchestrator | Default para build (Victor pidió construir sin más cambios): texto rojo del bloque de impacto usa `text-red-700 theme-dark:text-red-400` (AA 5.86/4.95:1); barras siguen `bg-destructive` | Accesibilidad gana sobre estética; mismo par que `DS::Alert :error`; reversible en una clase |
 | 2026-10-08 | orchestrator | Default para build: el segmento "This purchase" queda rojo en todos los meses, como está en el canvas | Canvas es la fuente de verdad; Victor puede pedir neutral después |
+| 2026-10-09 | orchestrator | Fases B y C construidas (18 tasks + revisión final + ronda de fixes) y verificadas en navegador contra el canvas; plan de código `docs/superpowers/plans/2026-10-08-recurring-transactions-phases-b-c.md` | Build pedido por Victor sin más cambios de diseño |
+| 2026-10-09 | orchestrator | Defaults de build: sólo transacciones en la moneda principal pueden ser plan (`b.err.foreign_currency`); "Ends after" de cargos mensuales tope 600; monto de cuotas/compra MSI bloqueado en servidor (fecha editable); cifras de la pestaña de tarjeta por estatus del plan, Upcoming por generación | Seguridad de datos y consistencia de números |
 
 ## Open Questions
 - [x] Nombre del concepto en UI (inglés) — resuelto por content-writer: "Recurring payment" / "Monthly charge" / "Installments (MSI)" (ver copy doc §1)
@@ -137,7 +139,9 @@ Final whole-branch review: ready. Its 3 Important findings were fixed in Task 10
 
 Detailed ledger: `.superpowers/sdd/progress.md` (git-excluded).
 
-**Next (code):** superpowers plans for Phase B (capture UI: `DS::Disclosure` fields in the transaction form + convert from `transactions/show`, calling `RecurringTransaction.create_from_entry!`) and Phase C (commitments view on the credit card + one line in budget).
+**Phases B + C: built and browser-verified (2026-10-09).** Pending for Victor: content review of `b.err.foreign_currency`, `bi.title_over_multi`, `bi.reference`; confirm every credit card shows the Recurring payments tab (empty state when no plans).
+
+**Was next (code):** superpowers plans for Phase B (capture UI: `DS::Disclosure` fields in the transaction form + convert from `transactions/show`, calling `RecurringTransaction.create_from_entry!`) and Phase C (commitments view on the credit card + one line in budget).
 
 **Next (Designpowers workflow):** design-taste → content-writer (open: UI name, proposal "Recurring payment") → interaction-design → design-lead → Phase B/C plans → design-builder + screenshot checkpoint → critic / accessibility-reviewer / heuristic-evaluator + reconciliation + fix round → synthetic-user-testing → verification-before-shipping → team presentation → design-retrospective.
 
