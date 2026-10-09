@@ -1,0 +1,106 @@
+<%# locals: (recurrence:, installments_available:, default_first_payment:, show_base_error: true, autofocus_type: false) %>
+
+<% plan_type = recurrence&.plan_type.to_s %>
+<% errors = recurrence&.errors %>
+<% payments_error = errors&.[](:total_payments)&.first %>
+<% start_error = errors&.[](:start_date)&.first %>
+<% base_error = show_base_error && errors && (errors[:base] + errors[:account]).first %>
+<% first_invalid = if base_error then :plan_type elsif payments_error then :total_payments elsif start_error then :start_date end %>
+<% first_payment = recurrence&.installments? ? recurrence.start_date : default_first_payment %>
+
+<div class="space-y-3">
+  <fieldset <%= tag.attributes("aria-describedby": ("recurrence_base_error" if base_error)) %>>
+    <legend class="text-xs text-secondary mb-1">Repeat</legend>
+
+    <% [ [ "", "Doesn't repeat", "none" ], [ "charge", "Monthly charge", "charge" ], [ "installments", "Installments", "installments" ] ].each do |value, label, key| %>
+      <% installments = value == "installments" %>
+      <%= tag.label class: "flex items-center gap-2 min-h-11 text-sm text-primary",
+                    hidden: installments && !installments_available,
+                    data: (installments ? { recurring_form_target: "installmentsOption" } : {}) do %>
+        <%= radio_button_tag "recurrence[plan_type]", value, plan_type == value,
+              id: "recurrence_plan_type_#{key}",
+              class: "form-field__radio",
+              disabled: installments && !installments_available,
+              autofocus: (plan_type == value && (first_invalid == :plan_type || (autofocus_type && first_invalid.nil?))),
+              data: { action: "change->recurring-form#selectType" } %>
+        <span><%= label %></span>
+      <% end %>
+    <% end %>
+
+    <% if base_error %>
+      <div class="mt-1"><%= render "transactions/recurrence_error", id: "recurrence_base_error", message: base_error %></div>
+    <% end %>
+  </fieldset>
+
+  <%= tag.div class: "@container", hidden: plan_type != "installments",
+              data: { recurring_form_target: "fields", plan_type: "installments" } do %>
+    <div class="grid grid-cols-1 @sm:grid-cols-2 gap-2">
+      <div class="flex flex-col gap-1">
+        <label class="<%= class_names("form-field", "border-destructive": payments_error && plan_type == "installments") %>" for="recurrence_total_payments_installments">
+          <span class="form-field__label">Number of installments</span>
+          <%= number_field_tag "recurrence[total_payments]",
+                (recurrence&.total_payments_before_type_cast if plan_type == "installments"),
+                id: "recurrence_total_payments_installments",
+                class: "form-field__input tabular-nums h-5",
+                autocomplete: "off", inputmode: "numeric", min: 2, max: RecurringTransaction::MAX_INSTALLMENTS, step: 1,
+                disabled: plan_type != "installments",
+                autofocus: first_invalid == :total_payments && plan_type == "installments",
+                "aria-invalid": (payments_error.present? if plan_type == "installments"),
+                "aria-describedby": ("recurrence_total_payments_installments_error" if payments_error && plan_type == "installments") %>
+        </label>
+        <% if payments_error && plan_type == "installments" %>
+          <%= render "transactions/recurrence_error", id: "recurrence_total_payments_installments_error", message: payments_error %>
+        <% end %>
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="<%= class_names("form-field", "border-destructive": start_error) %>" for="recurrence_start_date">
+          <span class="form-field__label">First payment</span>
+          <%= date_field_tag "recurrence[start_date]", first_payment&.iso8601,
+                id: "recurrence_start_date",
+                autocomplete: "off",
+                class: "form-field__input tabular-nums h-5",
+                disabled: plan_type != "installments",
+                autofocus: first_invalid == :start_date,
+                "aria-invalid": start_error.present?,
+                "aria-describedby": ("recurrence_start_date_error" if start_error),
+                data: { recurring_form_target: "firstPayment", action: "input->recurring-form#markFirstPaymentEdited" } %>
+        </label>
+        <% if start_error %>
+          <%= render "transactions/recurrence_error", id: "recurrence_start_date_error", message: start_error %>
+        <% end %>
+      </div>
+    </div>
+  <% end %>
+
+  <%= tag.div class: "flex flex-col gap-1", hidden: plan_type != "charge",
+              data: { recurring_form_target: "fields", plan_type: "charge" } do %>
+    <label class="<%= class_names("form-field", "border-destructive": payments_error && plan_type == "charge") %>" for="recurrence_total_payments_charge">
+      <span class="form-field__label">Ends after</span>
+      <span class="flex items-center gap-2">
+        <%= number_field_tag "recurrence[total_payments]",
+              (recurrence&.total_payments_before_type_cast if plan_type == "charge"),
+              id: "recurrence_total_payments_charge",
+              class: "form-field__input tabular-nums w-16",
+              autocomplete: "off", inputmode: "numeric", min: 1, step: 1, placeholder: "—",
+              disabled: plan_type != "charge",
+              autofocus: first_invalid == :total_payments && plan_type == "charge",
+              "aria-invalid": (payments_error.present? if plan_type == "charge"),
+              "aria-describedby": ("recurrence_total_payments_charge_error" if payments_error && plan_type == "charge") %>
+        <span class="text-sm text-secondary">payments</span>
+      </span>
+    </label>
+    <% if payments_error && plan_type == "charge" %>
+      <%= render "transactions/recurrence_error", id: "recurrence_total_payments_charge_error", message: payments_error %>
+    <% end %>
+  <% end %>
+
+  <%= turbo_frame_tag "recurring_preview",
+        class: "block transition-opacity duration-150 motion-reduce:transition-none",
+        data: {
+          recurring_form_target: "preview",
+          action: "turbo:frame-load->recurring-form#previewLoaded turbo:frame-missing->recurring-form#previewFailed turbo:fetch-request-error->recurring-form#previewFailed"
+        } %>
+
+  <p class="sr-only" role="status" aria-live="polite" aria-atomic="true" data-recurring-form-target="status"></p>
+</div>

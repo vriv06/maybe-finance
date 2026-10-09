@@ -1,6 +1,20 @@
-<%# locals: (entry:, income_categories:, expense_categories:) %>
+<%# locals: (entry:, income_categories:, expense_categories:, recurrence: nil) %>
 
-<%= styled_form_with model: entry, url: transactions_path, class: "space-y-4" do |f| %>
+<% outflow = params[:nature] != "inflow" && params.dig(:entry, :nature) != "inflow" %>
+<% recurring_data = if outflow
+     {
+       controller: "recurring-form",
+       recurring_form_preview_url_value: preview_recurring_transactions_path(impact: 1),
+       recurring_form_credit_account_ids_value: recurring_credit_account_ids,
+       recurring_form_unavailable_text_value: "We couldn't calculate this. You can still save.",
+       recurring_form_credit_only_text_value: "Installments only work on credit cards.",
+       action: "input->recurring-form#schedulePreview change->recurring-form#schedulePreview"
+     }
+   else
+     {}
+   end %>
+
+<%= styled_form_with model: entry, url: transactions_path, class: "space-y-4", data: recurring_data do |f| %>
   <% if entry.errors.any? %>
     <%= render "shared/form_errors", model: entry %>
   <% end %>
@@ -18,7 +32,7 @@
     <% if @entry.account_id %>
       <%= f.hidden_field :account_id %>
     <% else %>
-      <%= f.collection_select :account_id, Current.family.accounts.manual.active.alphabetically, :id, :name, { prompt: t(".account_prompt"), label: t(".account") }, required: true, class: "form-field__input text-ellipsis" %>
+      <%= f.collection_select :account_id, Current.family.accounts.manual.active.alphabetically, :id, :name, { prompt: t(".account_prompt"), label: t(".account") }, required: true, class: "form-field__input text-ellipsis", data: { action: "change->recurring-form#accountChanged" } %>
     <% end %>
 
     <%= f.money_field :amount, label: t(".amount"), required: true %>
@@ -26,8 +40,17 @@
       <% categories = params[:nature] == "inflow" ? income_categories : expense_categories %>
       <%= ef.collection_select :category_id, categories, :id, :name, { prompt: t(".category_prompt"), label: t(".category") } %>
     <% end %>
-    <%= f.date_field :date, label: t(".date"), required: true, min: Entry.min_supported_date, max: Date.current, value: Date.current %>
+    <%= f.date_field :date, label: t(".date"), required: true, min: Entry.min_supported_date, max: Date.current, value: Date.current, data: { action: "change->recurring-form#syncFirstPayment" } %>
   </section>
+
+  <% if outflow %>
+    <%= render DS::Disclosure.new(title: "Recurring payment", open: recurrence.present?) do %>
+      <%= render "transactions/recurrence_fields",
+                 recurrence: recurrence,
+                 installments_available: entry.account&.credit_card? || false,
+                 default_first_payment: (entry.date || Date.current).next_month %>
+    <% end %>
+  <% end %>
 
   <%= render DS::Disclosure.new(title: t(".details")) do %>
     <%= f.fields_for :entryable do |ef| %>

@@ -117,4 +117,9 @@ module RecurringTransactionsHelper
       "This puts #{first.budget.name} #{recurring_money(first.overage, first.budget.currency)} over budget"
     end
   end
+
+  # Accounts whose new transactions can be split into installments (manual, active credit cards)
+  def recurring_credit_account_ids
+    Current.family.accounts.manual.active.where(accountable_type: "CreditCard").pluck(:id)
+  end
 end
