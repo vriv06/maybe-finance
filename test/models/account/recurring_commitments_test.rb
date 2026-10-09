@@ -49,11 +49,13 @@ class Account::RecurringCommitmentsTest < ActiveSupport::TestCase
     assert_empty commitments.active_charge_plans
   end
 
-  test "headline figures only count plans that still generate" do
+  test "a disabled card still counts its plans by status but lists nothing upcoming" do
     @card.update!(status: "disabled")
+    commitments = @card.recurring_commitments
 
-    assert_equal BigDecimal("0"), @card.recurring_commitments.committed_per_month
-    assert_equal BigDecimal("0"), @card.recurring_commitments.left_on_installments
-    assert_empty @card.recurring_commitments.upcoming.items
+    assert_equal BigDecimal("1299"), commitments.committed_per_month
+    assert_equal BigDecimal("6000"), commitments.left_on_installments
+    assert_equal Date.new(2027, 3, 15), commitments.last_installment_date
+    assert_empty commitments.upcoming.items
   end
 end

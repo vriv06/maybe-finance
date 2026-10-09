@@ -130,6 +130,7 @@ class RecurringTransaction < ApplicationRecord
     total_payments && occurrence_date(total_payments)
   end
 
+  # Callers must not preload :transactions on an instance before calling generate_due! (stale cache).
   def generated_numbers
     return transactions.filter_map(&:installment_number) if transactions.loaded?
 

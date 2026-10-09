@@ -28,8 +28,8 @@ class Account::RecurringCommitments
     plans.reject { |plan| plan.status == "active" }.sort_by { |plan| plan.ended_on || Date.new(1970) }.reverse
   end
 
-  # Headline figures count the plans that still generate (manual, active account), the same
-  # ones Upcoming lists, so the numbers and the list never disagree.
+  # Headline figures count plans by status: a disabled card still owes its installments.
+  # Generation state only gates the Upcoming list.
   def committed_per_month
     counted_plans.sum(BigDecimal("0"), &:monthly_amount)
   end
@@ -59,8 +59,6 @@ class Account::RecurringCommitments
 
   private
     def counted_plans
-      return [] unless account.manual? && account.active?
-
       active_installment_plans + active_charge_plans
     end
 

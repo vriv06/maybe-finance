@@ -25,12 +25,12 @@
   <% else %>
     <h2 class="font-medium text-lg">Recurring payments</h2>
 
-    <dl class="<%= class_names("grid grid-cols-1 gap-1 bg-container-inset rounded-xl p-1", "md:grid-cols-3": last) %>">
+    <dl class="<%= class_names("grid grid-cols-1 gap-1 bg-container-inset rounded-xl p-1", "md:grid-cols-3": installment_plans.any?) %>">
       <div class="bg-container shadow-border-xs rounded-lg p-4 flex flex-col gap-1">
         <dt class="text-sm text-secondary">Committed per month</dt>
         <dd class="text-2xl font-medium text-primary tabular-nums"><%= recurring_money(commitments.committed_per_month, account.currency) %></dd>
       </div>
-      <% if last %>
+      <% if installment_plans.any? %>
         <div class="bg-container shadow-border-xs rounded-lg p-4 flex flex-col gap-1">
           <dt class="text-sm text-secondary">Left on installments</dt>
           <dd class="text-2xl font-medium text-primary tabular-nums"><%= recurring_money(commitments.left_on_installments, account.currency) %></dd>
@@ -44,19 +44,21 @@
       <% end %>
     </dl>
 
-    <section class="space-y-3" aria-labelledby="<%= dom_id(account, :recurring_upcoming) %>">
-      <h3 id="<%= dom_id(account, :recurring_upcoming) %>" class="flex items-center gap-2 text-sm font-medium text-primary">
-        <%= icon "calendar-clock", size: "sm" %>Upcoming
-      </h3>
+    <% if upcoming_groups.any? %>
+      <section class="space-y-3" aria-labelledby="<%= dom_id(account, :recurring_upcoming) %>">
+        <h3 id="<%= dom_id(account, :recurring_upcoming) %>" class="flex items-center gap-2 text-sm font-medium text-primary">
+          <%= icon "calendar-clock", size: "sm" %>Upcoming
+        </h3>
 
-      <% upcoming_groups.each do |date, items| %>
-        <%= render "recurring_transactions/commitment_group", date: date, items: items, view_plan: false %>
-      <% end %>
+        <% upcoming_groups.each do |date, items| %>
+          <%= render "recurring_transactions/commitment_group", date: date, items: items, view_plan: false %>
+        <% end %>
 
-      <%= render DS::Link.new(text: "See later months", variant: "outline", icon: "arrow-right", icon_position: "right",
-            full_width: true, href: budget_path(commitments.later_months_budget_param), frame: :_top,
-            aria: { label: "See later months in your budget" }) %>
-    </section>
+        <%= render DS::Link.new(text: "See later months", variant: "outline", icon: "arrow-right", icon_position: "right",
+              full_width: true, href: budget_path(commitments.later_months_budget_param), frame: :_top,
+              aria: { label: "See later months in your budget" }) %>
+      </section>
+    <% end %>
 
     <% if installment_plans.any? %>
       <table class="w-full text-sm">

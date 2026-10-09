@@ -76,7 +76,7 @@ class Family::RecurringCommitments
     end
 
     def upcoming_items
-      plan_scope.generatable.includes(:category, :account).flat_map do |plan|
+      plan_scope.generatable.includes(:category, :account, :transactions).flat_map do |plan|
         plan.upcoming(through: end_date).filter_map do |occurrence|
           next if occurrence.date < start_date
 
