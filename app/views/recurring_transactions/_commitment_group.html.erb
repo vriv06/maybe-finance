@@ -1,0 +1,21 @@
+<%# locals: (date:, items:, compact: false, **row_options) %>
+
+<div class="bg-container-inset rounded-xl p-1">
+  <h4 class="<%= class_names("py-2 flex items-center justify-between font-medium text-xs text-secondary", compact ? "px-3" : "px-4") %>">
+    <span class="uppercase"><%= recurring_group_label(date) %> <span aria-hidden="true">·</span> <%= items.size %></span>
+    <span class="tabular-nums">
+      <span class="sr-only">Total for <%= date.strftime("%B %-d") %>: </span><%= recurring_money(items.sum(&:amount), items.first.plan.currency) %>
+    </span>
+  </h4>
+
+  <ul class="bg-container shadow-border-xs rounded-lg">
+    <% items.each_with_index do |item, index| %>
+      <li>
+        <% if index.positive? %>
+          <%= render "shared/ruler" %>
+        <% end %>
+        <%= render "recurring_transactions/commitment_row", item: item, compact: compact, **row_options %>
+      </li>
+    <% end %>
+  </ul>
+</div>

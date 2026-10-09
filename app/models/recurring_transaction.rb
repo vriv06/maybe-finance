@@ -131,6 +131,8 @@ class RecurringTransaction < ApplicationRecord
   end
 
   def generated_numbers
+    return transactions.filter_map(&:installment_number) if transactions.loaded?
+
     transactions.where.not(installment_number: nil).pluck(:installment_number)
   end
 

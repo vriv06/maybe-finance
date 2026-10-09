@@ -36,24 +36,32 @@ class UI::AccountPage < ApplicationComponent
     tabs.find { |tab| tab == @active_tab&.to_sym } || tabs.first
   end
 
+  TAB_LABELS = { recurring: "Recurring payments" }.freeze
+
   def tabs
     case account.accountable_type
     when "Investment"
       [ :activity, :holdings ]
     when "Property", "Vehicle", "Loan"
       [ :activity, :overview ]
+    when "CreditCard"
+      [ :activity, :recurring ]
     else
       [ :activity ]
     end
+  end
+
+  def tab_label(tab)
+    TAB_LABELS.fetch(tab) { tab.to_s.humanize }
   end
 
   def tab_content_for(tab)
     case tab
     when :activity
       activity_feed
-    when :holdings, :overview
+    when :holdings, :overview, :recurring
       # Accountable is responsible for implementing the partial in the correct folder
-      render "#{account.accountable_type.downcase.pluralize}/tabs/#{tab}", account: account
+      render "#{account.accountable_type.underscore.pluralize}/tabs/#{tab}", account: account
     end
   end
 end

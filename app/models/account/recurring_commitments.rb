@@ -9,7 +9,7 @@ class Account::RecurringCommitments
   end
 
   def plans
-    @plans ||= account.recurring_transactions.includes(:category).order(:name).to_a
+    @plans ||= account.recurring_transactions.includes(:category, :transactions).order(:name).to_a
   end
 
   def any?
@@ -28,16 +28,18 @@ class Account::RecurringCommitments
     plans.reject { |plan| plan.status == "active" }.sort_by { |plan| plan.ended_on || Date.new(1970) }.reverse
   end
 
+  # Headline figures count the plans that still generate (manual, active account), the same
+  # ones Upcoming lists, so the numbers and the list never disagree.
   def committed_per_month
-    (active_installment_plans + active_charge_plans).sum(BigDecimal("0"), &:monthly_amount)
+    counted_plans.sum(BigDecimal("0"), &:monthly_amount)
   end
 
   def left_on_installments
-    active_installment_plans.sum(BigDecimal("0"), &:remaining_balance)
+    counted_plans.select(&:installments?).sum(BigDecimal("0"), &:remaining_balance)
   end
 
   def last_installment_date
-    active_installment_plans.filter_map(&:end_date).max
+    counted_plans.select(&:installments?).filter_map(&:end_date).max
   end
 
   # Not-yet-generated payments from the start of this month through the end of the second next one
@@ -56,6 +58,12 @@ class Account::RecurringCommitments
   end
 
   private
+    def counted_plans
+      return [] unless account.manual? && account.active?
+
+      active_installment_plans + active_charge_plans
+    end
+
     def family
       account.family
     end

@@ -1,0 +1,159 @@
+<%# locals: (account:) %>
+
+<% commitments = account.recurring_commitments %>
+<% installment_plans = commitments.active_installment_plans %>
+<% upcoming_groups = commitments.upcoming.by_date %>
+<% charge_plans = commitments.active_charge_plans %>
+<% past_plans = commitments.past_plans %>
+<% last = commitments.last_installment_date %>
+<% all_done = commitments.any? && installment_plans.empty? && charge_plans.empty? %>
+
+<div class="bg-container p-5 shadow-border-xs rounded-xl space-y-5">
+  <% if !commitments.any? %>
+    <div class="flex flex-col items-center text-center gap-3 py-10">
+      <span class="w-9 h-9 rounded-xl bg-container-inset flex items-center justify-center"><%= icon "repeat", size: "lg" %></span>
+      <h2 class="text-sm font-medium text-primary">No recurring payments on this card</h2>
+      <p class="text-sm text-secondary max-w-xs -mt-2">Add one when you create a transaction.</p>
+      <%= render DS::Link.new(text: "New transaction", variant: "secondary", icon: "plus",
+            href: new_transaction_path(account_id: account.id, nature: "outflow"), frame: :modal) %>
+    </div>
+  <% elsif all_done %>
+    <div class="flex flex-col items-center text-center gap-3 py-6">
+      <span class="w-9 h-9 rounded-xl bg-container-inset flex items-center justify-center"><%= icon "check", size: "lg" %></span>
+      <h2 class="text-sm font-medium text-primary">Nothing left to pay</h2>
+    </div>
+  <% else %>
+    <h2 class="font-medium text-lg">Recurring payments</h2>
+
+    <dl class="<%= class_names("grid grid-cols-1 gap-1 bg-container-inset rounded-xl p-1", "md:grid-cols-3": last) %>">
+      <div class="bg-container shadow-border-xs rounded-lg p-4 flex flex-col gap-1">
+        <dt class="text-sm text-secondary">Committed per month</dt>
+        <dd class="text-2xl font-medium text-primary tabular-nums"><%= recurring_money(commitments.committed_per_month, account.currency) %></dd>
+      </div>
+      <% if last %>
+        <div class="bg-container shadow-border-xs rounded-lg p-4 flex flex-col gap-1">
+          <dt class="text-sm text-secondary">Left on installments</dt>
+          <dd class="text-2xl font-medium text-primary tabular-nums"><%= recurring_money(commitments.left_on_installments, account.currency) %></dd>
+        </div>
+        <div class="bg-container shadow-border-xs rounded-lg p-4 flex flex-col gap-1">
+          <dt class="text-sm text-secondary">Last installment</dt>
+          <dd class="text-2xl font-medium text-primary tabular-nums">
+            <time datetime="<%= last.strftime("%Y-%m") %>" aria-label="<%= last.strftime("%B %Y") %>"><%= last.strftime("%b %Y") %></time>
+          </dd>
+        </div>
+      <% end %>
+    </dl>
+
+    <section class="space-y-3" aria-labelledby="<%= dom_id(account, :recurring_upcoming) %>">
+      <h3 id="<%= dom_id(account, :recurring_upcoming) %>" class="flex items-center gap-2 text-sm font-medium text-primary">
+        <%= icon "calendar-clock", size: "sm" %>Upcoming
+      </h3>
+
+      <% upcoming_groups.each do |date, items| %>
+        <%= render "recurring_transactions/commitment_group", date: date, items: items, view_plan: false %>
+      <% end %>
+
+      <%= render DS::Link.new(text: "See later months", variant: "outline", icon: "arrow-right", icon_position: "right",
+            full_width: true, href: budget_path(commitments.later_months_budget_param), frame: :_top,
+            aria: { label: "See later months in your budget" }) %>
+    </section>
+
+    <% if installment_plans.any? %>
+      <table class="w-full text-sm">
+        <caption class="text-left text-sm font-medium text-primary mb-2">Installments</caption>
+        <thead class="text-xs uppercase font-medium text-secondary">
+          <tr class="bg-container-inset">
+            <th scope="col" class="text-left font-medium px-4 py-2 rounded-l-lg">Purchase</th>
+            <th scope="col" class="text-right font-medium px-4 py-2">Per month</th>
+            <th scope="col" class="text-right font-medium px-4 py-2 hidden md:table-cell">Payments left</th>
+            <th scope="col" class="text-right font-medium px-4 py-2 hidden md:table-cell">Left to pay</th>
+            <th scope="col" class="text-right font-medium px-4 py-2 hidden md:table-cell">Ends</th>
+            <th scope="col" class="px-4 py-2 rounded-r-lg"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody class="tabular-nums">
+          <% installment_plans.each_with_index do |plan, index| %>
+            <% left_count = "#{plan.remaining_payments} of #{plan.total_payments}" %>
+            <% left_amount = recurring_money(plan.remaining_balance, plan.currency) %>
+            <% ends = recurring_date(plan.end_date) %>
+            <tr class="<%= "border-b border-divider" unless index == installment_plans.size - 1 %>">
+              <td class="px-4 py-3 align-top">
+                <p class="font-medium text-primary"><%= plan.name %></p>
+                <p class="text-xs text-secondary md:hidden"><%= left_count %> <span aria-hidden="true">·</span> <%= left_amount %> <span aria-hidden="true">·</span> <%= ends %></p>
+              </td>
+              <td class="px-4 py-3 align-top text-right text-primary"><%= recurring_money(plan.monthly_amount, plan.currency) %></td>
+              <td class="px-4 py-3 align-top text-right text-secondary hidden md:table-cell"><%= left_count %></td>
+              <td class="px-4 py-3 align-top text-right text-primary hidden md:table-cell"><%= left_amount %></td>
+              <td class="px-4 py-3 align-top text-right text-secondary hidden md:table-cell whitespace-nowrap"><%= ends %></td>
+              <td class="px-4 py-3 align-top text-right">
+                <%= link_to "View plan", recurring_transaction_path(plan), class: "text-primary font-medium hover:underline whitespace-nowrap",
+                      aria: { label: "View plan for #{plan.name}" }, data: { turbo_frame: :modal } %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+
+    <% if charge_plans.any? %>
+      <table class="w-full text-sm">
+        <caption class="text-left text-sm font-medium text-primary mb-2">Monthly charges</caption>
+        <thead class="text-xs uppercase font-medium text-secondary">
+          <tr class="bg-container-inset">
+            <th scope="col" class="text-left font-medium px-4 py-2 rounded-l-lg">Name</th>
+            <th scope="col" class="text-right font-medium px-4 py-2">Per month</th>
+            <th scope="col" class="text-right font-medium px-4 py-2 hidden md:table-cell">Next payment</th>
+            <th scope="col" class="text-right font-medium px-4 py-2 hidden md:table-cell">Ends</th>
+            <th scope="col" class="px-4 py-2 rounded-r-lg"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody class="tabular-nums">
+          <% charge_plans.each_with_index do |plan, index| %>
+            <% next_date = plan.next_payment_date %>
+            <% next_text = next_date ? recurring_date(next_date, short: true) : "" %>
+            <% ends = plan.end_date ? recurring_date(plan.end_date) : "No end date" %>
+            <tr class="<%= "border-b border-divider" unless index == charge_plans.size - 1 %>">
+              <td class="px-4 py-3 align-top">
+                <p class="font-medium text-primary"><%= plan.name %></p>
+                <p class="text-xs text-secondary md:hidden"><%= next_text %> <span aria-hidden="true">·</span> <%= ends %></p>
+              </td>
+              <td class="px-4 py-3 align-top text-right text-primary"><%= recurring_money(plan.amount, plan.currency) %></td>
+              <td class="px-4 py-3 align-top text-right text-secondary hidden md:table-cell"><%= next_text %></td>
+              <td class="px-4 py-3 align-top text-right text-secondary hidden md:table-cell"><%= ends %></td>
+              <td class="px-4 py-3 align-top text-right">
+                <%= link_to "View plan", recurring_transaction_path(plan), class: "text-primary font-medium hover:underline whitespace-nowrap",
+                      aria: { label: "View plan for #{plan.name}" }, data: { turbo_frame: :modal } %>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+  <% end %>
+
+  <% if past_plans.any? %>
+    <%= render DS::Disclosure.new(title: "Past plans (#{past_plans.size})", align: :left, open: all_done) do %>
+      <div class="bg-container-inset rounded-xl p-1">
+        <ul class="bg-container shadow-border-xs rounded-lg">
+          <% past_plans.each_with_index do |plan, index| %>
+            <% state_icon, state_text = recurring_plan_state(plan) %>
+            <li>
+              <% if index.positive? %>
+                <%= render "shared/ruler" %>
+              <% end %>
+              <div class="flex items-center gap-3 px-4 py-3">
+                <div class="min-w-0 grow">
+                  <p class="text-sm font-medium text-primary"><%= plan.name %></p>
+                  <p class="text-xs text-secondary"><%= plan.installments? ? "Installments" : "Monthly charge" %></p>
+                </div>
+                <p class="text-xs text-secondary flex items-center gap-1 shrink-0">
+                  <%= icon state_icon, size: "xs", color: "current" %><span><%= state_text %></span>
+                </p>
+              </div>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+  <% end %>
+</div>
