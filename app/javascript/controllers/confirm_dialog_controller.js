@@ -3,7 +3,7 @@ import { Controller } from "@hotwired/stimulus";
 // Connects to data-controller="confirm-dialog"
 // See javascript/controllers/application.js for how this is wired up
 export default class extends Controller {
-  static targets = ["title", "subtitle", "confirmButton"];
+  static targets = ["title", "subtitle", "confirmButton", "cancelButton"];
 
   handleConfirm(rawData) {
     const data = this.#normalizeRawData(rawData);
@@ -11,6 +11,9 @@ export default class extends Controller {
     this.#prepareDialog(data);
 
     this.element.showModal();
+
+    // With a secondary button, the safe choice gets the initial focus (destructive confirms)
+    if (data.cancelText) this.cancelButtonTarget.focus();
 
     return new Promise((resolve) => {
       this.element.addEventListener(
@@ -36,6 +39,13 @@ export default class extends Controller {
 
       button.textContent = data.confirmText || "Confirm";
     });
+
+    if (data.cancelText) {
+      this.cancelButtonTarget.textContent = data.cancelText;
+      this.cancelButtonTarget.removeAttribute("hidden");
+    } else {
+      this.cancelButtonTarget.setAttribute("hidden", true);
+    }
 
     this.titleTarget.textContent = data.title || "Are you sure?";
     this.subtitleTarget.innerHTML =

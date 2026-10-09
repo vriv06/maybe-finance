@@ -1,6 +1,6 @@
 <%# This dialog is used as an override to the browser's confirm API when submitting forms with data-turbo-confirm %>
 <%# See confirm_dialog_controller.js and _htmldoc.html.erb  %>
-<%= render DS::Dialog.new(id: "confirm-dialog", auto_open: false, data: { controller: "confirm-dialog" }, width: "sm", disable_frame: true) do |dialog| %>
+<%= render DS::Dialog.new(id: "confirm-dialog", auto_open: false, data: { controller: "confirm-dialog" }, aria: { describedby: "confirm-dialog-body" }, width: "sm", disable_frame: true) do |dialog| %>
   <% dialog.with_body do %>
     <form method="dialog" class="space-y-4">
       <div class="space-y-2">
@@ -9,10 +9,10 @@
           <%= icon("x", as_button: true, type: "submit", value: "cancel") %>
         </div>
 
-        <p class="text-sm text-secondary" data-confirm-dialog-target="subtitle">This action cannot be undone.</p>
+        <p id="confirm-dialog-body" class="text-sm text-secondary" data-confirm-dialog-target="subtitle">This action cannot be undone.</p>
       </div>
 
-      <div>
+      <div class="flex flex-col gap-2">
         <% ["primary", "outline-destructive", "destructive"].each do |variant| %>
           <%= render DS::Button.new(
           text: "Confirm",
@@ -24,6 +24,15 @@
           hidden: true,
         ) %>
         <% end %>
+
+        <%= render DS::Button.new(
+          text: "Cancel",
+          variant: "outline",
+          full_width: true,
+          value: "cancel",
+          data: { confirm_dialog_target: "cancelButton" },
+          hidden: true,
+        ) %>
       </div>
     </form>
   <% end %>
