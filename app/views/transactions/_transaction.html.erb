@@ -71,18 +71,40 @@
                   </div>
                 </div>
 
-                <div class="text-secondary text-xs font-normal hidden lg:block">
-                  <% if transaction.transfer? %>
-                    <span class="text-secondary">
-                      <%= transaction.loan_payment? ? "Loan Payment" : "Transfer" %> • <%= entry.account.name %>
+                <% plan = transaction.recurring_transaction %>
+                <% if plan %>
+                  <p class="text-secondary text-xs font-normal flex items-start gap-1">
+                    <%= icon recurring_icon(plan), size: "xs", class: "mt-0.5" %>
+                    <span class="min-w-0">
+                      <span class="hidden lg:inline">
+                        <%= link_to entry.account.name,
+                            account_path(entry.account, tab: "transactions"),
+                            data: { turbo_frame: "_top" },
+                            class: "hover:underline" %>
+                        <span aria-hidden="true">·</span>
+                      </span>
+                      <%= recurring_provenance_label(transaction) %>
+                      <%= link_to "View plan",
+                          recurring_transaction_path(plan),
+                          class: "text-primary font-medium hover:underline whitespace-nowrap",
+                          aria: { label: "View plan for #{plan.name}" },
+                          data: { turbo_frame: :modal } %>
                     </span>
-                  <% else %>
-                    <%= link_to entry.account.name,
-                        account_path(entry.account, tab: "transactions"),
-                        data: { turbo_frame: "_top" },
-                        class: "hover:underline" %>
-                  <% end %>
-                </div>
+                  </p>
+                <% else %>
+                  <div class="text-secondary text-xs font-normal hidden lg:block">
+                    <% if transaction.transfer? %>
+                      <span class="text-secondary">
+                        <%= transaction.loan_payment? ? "Loan Payment" : "Transfer" %> • <%= entry.account.name %>
+                      </span>
+                    <% else %>
+                      <%= link_to entry.account.name,
+                          account_path(entry.account, tab: "transactions"),
+                          data: { turbo_frame: "_top" },
+                          class: "hover:underline" %>
+                    <% end %>
+                  </div>
+                <% end %>
               </div>
             </div>
           <% end %>

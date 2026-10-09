@@ -18,7 +18,7 @@ class TransactionsController < ApplicationController
                        .reverse_chronological
                        .includes(
                          { entry: :account },
-                         :category, :merchant, :tags,
+                         :category, :merchant, :tags, :recurring_transaction,
                          :transfer_as_inflow, :transfer_as_outflow
                        )
 

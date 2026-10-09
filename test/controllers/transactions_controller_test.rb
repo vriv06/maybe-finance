@@ -296,7 +296,38 @@ end
     assert_includes response.body, "Installments only work on credit cards."
   end
 
+  test "the drawer explains a generated installment and locks its amount" do
+    travel_to Date.new(2026, 10, 8)
+    installment = create_installment_plan.transactions.find_by(installment_number: 1).entry
+
+    get transaction_url(installment), headers: { "Turbo-Frame" => "drawer" }
+
+    assert_response :success
+    assert_includes response.body, "Installment 1 of 3"
+    assert_includes response.body, "Set by the plan."
+    assert_includes response.body, "View plan for Laptop"
+    assert_not_includes response.body, "One-time Expense"
+    assert_not_includes response.body, "Open matcher"
+  end
+
+  test "the list explains generated rows" do
+    travel_to Date.new(2026, 10, 8)
+    create_installment_plan
+
+    get transactions_url(q: { search: "Laptop" }), headers: { "Turbo-Frame" => "transactions" }
+
+    assert_response :success
+    assert_includes response.body, "Paid in 3 installments"
+    assert_includes response.body, "Installment 1 of 3"
+  end
+
   private
+    def create_installment_plan
+      card = accounts(:credit_card)
+      purchase = create_transaction(account: card, amount: 3000, name: "Laptop", date: Date.new(2026, 8, 20))
+      RecurringTransaction.create_from_entry!(purchase, plan_type: "installments", total_payments: 3)
+    end
+
     def recurring_entry_params(account, amount:)
       {
         account_id: account.id, name: "iPad Air", date: "2026-10-08", currency: "USD", amount: amount,
