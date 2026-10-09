@@ -59,6 +59,28 @@ class RecurringTransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, ERB::Util.html_escape("3 already due. They'll be added with their original dates.")
   end
 
+  test "preview refuses another family's entry and account" do
+    other_account = Account.create!(family: families(:empty), accountable: CreditCard.new, name: "Other card",
+                                    status: "active", currency: "USD", balance: 0)
+    other_entry = other_account.entries.create!(name: "Theirs", date: Date.new(2026, 10, 1), amount: 500, currency: "USD",
+                                                entryable: Transaction.new)
+
+    assert_no_difference [ "RecurringTransaction.count", "Entry.count" ] do
+      get preview_recurring_transactions_url, params: { entry_id: other_entry.id, recurrence: { plan_type: "charge" } }, headers: @frame
+      assert_response :success
+      assert_includes response.body, %(<turbo-frame id="recurring_preview">)
+      assert_not_includes response.body, "every month"
+
+      get preview_recurring_transactions_url, params: {
+        entry: { account_id: other_account.id, amount: "15000", currency: "USD", date: "2026-10-08" },
+        recurrence: { plan_type: "installments", total_payments: "12", start_date: "2026-11-08" }
+      }, headers: @frame
+      assert_response :success
+      assert_includes response.body, %(<turbo-frame id="recurring_preview">)
+      assert_not_includes response.body, "installments of"
+    end
+  end
+
   test "shows a plan with a safe stop confirm" do
     plan = create_charge
 

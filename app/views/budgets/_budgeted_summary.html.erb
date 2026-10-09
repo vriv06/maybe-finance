@@ -4,7 +4,7 @@
   <div class="p-4 border-b border-secondary">
     <h3 class="text-sm text-secondary mb-2">Expected income</h3>
 
-    <span class="inline-block mb-2 text-xl font-medium text-primary">
+    <span class="<%= class_names("inline-block text-xl font-medium text-primary", "mb-2": !budget.future?) %>">
       <%= format_money(budget.expected_income_money) %>
     </span>
 

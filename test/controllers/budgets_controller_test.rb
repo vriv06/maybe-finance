@@ -85,6 +85,39 @@ class BudgetsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_includes response.body, "Committed in December 2026"
+    assert_includes response.body, "December 2026 committed"
     assert_includes response.body, "Rent"
+  end
+
+  test "a past month never shows recurring commitments or borrows a budget" do
+    get budget_url("sep-2026"), headers: @frame
+
+    assert_response :success
+    assert_not_includes response.body, "committed to recurring payments"
+    assert_not_includes response.body, "Nothing committed"
+    assert_not_includes response.body, "of your October 2026 budget"
+  end
+
+  test "editing a future month offers to start from the latest configured budget" do
+    ActionView::Base.any_instance.stubs(:stylesheet_link_tag).returns("")
+    get edit_budget_url("dec-2026")
+
+    assert_response :success
+    assert_includes response.body, "Start from your October 2026 budget"
+    assert_includes response.body, "Copies October 2026's budget"
+  end
+
+  test "updating a future month with autofill copies the latest configured budget's categories" do
+    october = @family.budgets.find_by!(start_date: Date.new(2026, 10, 1))
+    food = categories(:food_and_drink)
+    october.sync_budget_categories
+    october.budget_categories.find_by!(category: food).update!(budgeted_spending: 321)
+
+    patch budget_url("dec-2026"), params: {
+      budget: { budgeted_spending: "1000", expected_income: "3000", autofill_previous_month: "1" }
+    }
+
+    december = @family.budgets.find_by!(start_date: Date.new(2026, 12, 1))
+    assert_equal 321, december.budget_categories.find_by!(category: food).budgeted_spending
   end
 end

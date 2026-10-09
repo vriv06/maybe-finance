@@ -1,6 +1,8 @@
 require "test_helper"
 
 class BudgetTest < ActiveSupport::TestCase
+  include EntriesTestHelper
+
   setup do
     @family = families(:empty)
   end
@@ -297,6 +299,33 @@ class BudgetTest < ActiveSupport::TestCase
     assert december.future?
     assert_equal BigDecimal("300"), december.actual_spending
     assert_equal BigDecimal("300"), food.actual_spending
+  end
+
+  test "current and past months keep reporting real spending, never commitments" do
+    travel_to Date.new(2026, 10, 8)
+    family = families(:dylan_family)
+    family.budgets.destroy_all
+    accounts(:credit_card).entries.delete_all
+    food = categories(:food_and_drink)
+    family.recurring_transactions.create!(account: accounts(:credit_card), name: "Club", plan_type: "charge",
+                                          amount: 300, currency: "USD", start_date: Date.new(2026, 10, 15),
+                                          category: food)
+    create_transaction(account: accounts(:depository), date: Date.new(2026, 10, 2), amount: 40, category: food)
+    create_transaction(account: accounts(:depository), date: Date.new(2026, 9, 12), amount: 25, category: food)
+
+    [ Date.new(2026, 10, 1), Date.new(2026, 9, 1) ].each do |month|
+      budget = Budget.find_or_bootstrap(family, start_date: month)
+      totals = family.income_statement.expense_totals(period: budget.period)
+      row = budget.budget_categories.find { |bc| bc.category == food }
+      food_total = totals.category_totals.find { |ct| ct.category.id == food.id }&.total || 0
+
+      assert_not budget.future?
+      assert_equal totals.total, budget.actual_spending
+      assert_equal food_total, row.actual_spending
+    end
+
+    assert budget_with_upcoming = Budget.find_or_bootstrap(family, start_date: Date.new(2026, 10, 1))
+    assert_operator budget_with_upcoming.committed_spending, :>, budget_with_upcoming.actual_spending
   end
 
   test "previous_budget of a future month is the latest configured one" do
