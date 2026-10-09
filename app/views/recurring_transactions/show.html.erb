@@ -1,0 +1,92 @@
+<% plan = @recurring_transaction %>
+<% editable = plan.status == "active" %>
+
+<%= render DS::Dialog.new(reload_on_close: true) do |dialog| %>
+  <% dialog.with_header(hide_close_icon: true) do %>
+    <div class="flex items-start justify-between gap-2">
+      <div class="min-w-0">
+        <h2 tabindex="-1" autofocus class="text-lg font-medium text-primary rounded outline-none focus-visible:ring-4 focus-visible:ring-alpha-black-200"><%= plan.name_in_database %></h2>
+        <p class="text-sm text-secondary tabular-nums flex flex-wrap items-center gap-x-1">
+          <% recurring_plan_subtitle_parts(plan).each_with_index do |part, index| %>
+            <% if index.positive? %><span aria-hidden="true">·</span><% end %>
+            <span class="inline-flex items-center gap-1"><%= part %></span>
+          <% end %>
+        </p>
+      </div>
+
+      <%= render DS::Button.new(variant: "icon", icon: "x", class: "shrink-0", type: "button",
+            data: { action: "DS--dialog#close" }, aria: { label: "Close" }) %>
+    </div>
+  <% end %>
+
+  <% dialog.with_body do %>
+    <div class="space-y-4 pb-4">
+      <% if editable && plan.installments? %>
+        <% paid = plan.last_handled_number %>
+        <% paid_percent = (paid * 100.0 / plan.total_payments).round(2) %>
+        <div>
+          <div class="flex h-1.5 mb-3 gap-1" aria-hidden="true">
+            <div class="rounded-md h-1.5 bg-inverse" style="width: <%= paid_percent %>%"></div>
+            <div class="rounded-md h-1.5 bg-surface-inset" style="width: <%= 100 - paid_percent %>%"></div>
+          </div>
+          <div class="flex justify-between text-sm tabular-nums">
+            <p class="text-secondary"><%= paid %> of <%= plan.total_payments %> paid</p>
+            <p class="text-primary font-medium text-right"><%= recurring_money(plan.remaining_balance, plan.currency) %> left</p>
+          </div>
+        </div>
+      <% end %>
+
+      <% if editable %>
+        <%= styled_form_with model: plan, url: recurring_transaction_path(plan), method: :patch, class: "space-y-4" do |f| %>
+          <% if plan.errors.any? %>
+            <%= render "shared/form_errors", model: plan %>
+          <% end %>
+
+          <div class="space-y-2">
+            <%= f.text_field :name, label: "Name", required: true %>
+            <%= f.collection_select :category_id, Current.family.categories.expenses.alphabetically, :id, :name,
+                  { label: "Category", include_blank: "Uncategorized" } %>
+            <% if plan.charge? %>
+              <%= f.money_field :amount, label: "Amount", required: true, disable_currency: true %>
+            <% end %>
+          </div>
+
+          <% if plan.installments? %>
+            <div class="flex items-start gap-3 rounded-lg border border-tertiary p-3">
+              <%= icon "lock" %>
+              <p class="text-sm text-secondary">To change installments or dates, delete the purchase and add it again.</p>
+            </div>
+          <% end %>
+
+          <%= render DS::Button.new(
+            text: "Save changes",
+            type: "submit",
+            full_width: true,
+            confirm: (CustomConfirm.for_plan_edit(plan) if plan.last_handled_number.positive?)
+          ) %>
+        <% end %>
+
+        <div class="border-t border-divider pt-4">
+          <%= render DS::Button.new(
+            text: "Stop payments",
+            variant: "outline-destructive",
+            href: stop_recurring_transaction_path(plan),
+            method: :patch,
+            confirm: CustomConfirm.for_plan_stop(plan)
+          ) %>
+        </div>
+      <% else %>
+        <dl class="space-y-3 text-sm">
+          <div class="flex justify-between gap-4">
+            <dt class="text-secondary">Category</dt>
+            <dd class="text-primary font-medium text-right"><%= plan.category&.name || "Uncategorized" %></dd>
+          </div>
+          <div class="flex justify-between gap-4">
+            <dt class="text-secondary">Account</dt>
+            <dd class="text-primary font-medium text-right"><%= plan.account.name %></dd>
+          </div>
+        </dl>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>

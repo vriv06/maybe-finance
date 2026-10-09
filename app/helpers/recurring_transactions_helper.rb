@@ -134,4 +134,16 @@ module RecurringTransactionsHelper
 
     RecurringTransaction.ineligibility_reason(entry).nil? ? :editable : nil
   end
+
+  # c3.subtitle_installments / c3.subtitle_charge, joined by an aria-hidden "·" in the view
+  def recurring_plan_subtitle_parts(plan)
+    state_icon, state_text = recurring_plan_state(plan)
+    state = state_icon ? safe_join([ icon(state_icon, size: "xs", color: "current"), state_text ]) : state_text
+
+    if plan.installments?
+      [ "#{plan.total_payments} installments of #{recurring_money(plan.occurrence_amount(1), plan.currency)}", state ]
+    else
+      [ "Monthly charge", recurring_money(plan.amount, plan.currency), state ]
+    end
+  end
 end
