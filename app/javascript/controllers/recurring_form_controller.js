@@ -25,6 +25,8 @@ export default class extends Controller {
 
   selectType() {
     this.#applyType();
+    this.#toggleCreditOnlyNote(false);
+    this.#announce("");
     this.schedulePreview();
   }
 
@@ -44,8 +46,9 @@ export default class extends Controller {
     this.firstPaymentTarget.dataset.edited = "true";
   }
 
-  schedulePreview() {
+  schedulePreview(event) {
     if (!this.hasPreviewTarget) return;
+    if (event && event.target && !this.#watched(event.target.name)) return;
     clearTimeout(this.previewTimeout);
 
     if (!this.#planType) {
@@ -60,6 +63,13 @@ export default class extends Controller {
 
   previewLoaded() {
     this.#finishLoading();
+
+    // A response that arrives after the plan was cleared or became unavailable is stale
+    if (!this.#planType || !this.#installmentsAllowed) {
+      this.previewTarget.replaceChildren();
+      return;
+    }
+
     const announcement = this.previewTarget.querySelector("[data-recurring-form-announcement]");
     this.#announce(announcement ? announcement.textContent.trim() : "");
   }
@@ -67,6 +77,7 @@ export default class extends Controller {
   previewFailed(event) {
     event.preventDefault();
     this.#finishLoading();
+    this.previewTarget.removeAttribute("src");
 
     if (this.previewTarget.textContent.trim() === "") {
       const box = document.createElement("div");
@@ -84,6 +95,23 @@ export default class extends Controller {
   get #planType() {
     const checked = this.element.querySelector('input[name="recurrence[plan_type]"]:checked');
     return checked ? checked.value : "";
+  }
+
+  get #installmentsAllowed() {
+    if (this.#planType !== "installments") return true;
+    return this.hasInstallmentsOptionTarget && !this.installmentsOptionTarget.querySelector("input").disabled;
+  }
+
+  #watched(name) {
+    return (
+      typeof name === "string" &&
+      (name.startsWith("recurrence[") || ["entry[account_id]", "entry[amount]", "entry[currency]", "entry[date]"].includes(name))
+    );
+  }
+
+  #toggleCreditOnlyNote(visible) {
+    const note = this.element.querySelector("[data-recurring-form-note]");
+    if (note) note.hidden = !visible;
   }
 
   get #form() {
@@ -114,10 +142,13 @@ export default class extends Controller {
     this.installmentsOptionTarget.hidden = !isCreditCard;
     radio.disabled = !isCreditCard;
 
+    if (isCreditCard) this.#toggleCreditOnlyNote(false);
+
     if (!isCreditCard && radio.checked) {
       this.element.querySelector('input[name="recurrence[plan_type]"][value=""]').checked = true;
       this.#applyType();
       this.#clearPreview();
+      this.#toggleCreditOnlyNote(true);
       this.#announce(this.creditOnlyTextValue);
     }
   }
@@ -152,7 +183,6 @@ export default class extends Controller {
     this.previewTarget.removeAttribute("src");
     this.previewTarget.replaceChildren();
     this.#finishLoading();
-    this.#announce("");
   }
 
   #finishLoading() {

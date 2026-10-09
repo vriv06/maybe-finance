@@ -11,6 +11,7 @@
 <div class="space-y-3">
   <fieldset <%= tag.attributes("aria-describedby": ("recurrence_base_error" if base_error)) %>>
     <legend class="text-xs text-secondary mb-1">Repeat</legend>
+    <p class="text-secondary text-xs mb-1" hidden data-recurring-form-note>Installments only work on credit cards.</p>
 
     <% [ [ "", "Doesn't repeat", "none" ], [ "charge", "Monthly charge", "charge" ], [ "installments", "Installments", "installments" ] ].each do |value, label, key| %>
       <% installments = value == "installments" %>
@@ -101,6 +102,4 @@
           recurring_form_target: "preview",
           action: "turbo:frame-load->recurring-form#previewLoaded turbo:frame-missing->recurring-form#previewFailed turbo:fetch-request-error->recurring-form#previewFailed"
         } %>
-
-  <p class="sr-only" role="status" aria-live="polite" aria-atomic="true" data-recurring-form-target="status"></p>
 </div>

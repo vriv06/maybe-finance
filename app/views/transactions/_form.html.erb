@@ -1,11 +1,12 @@
 <%# locals: (entry:, income_categories:, expense_categories:, recurrence: nil) %>
 
+<% credit_account_ids = recurring_credit_account_ids %>
 <% outflow = params[:nature] != "inflow" && params.dig(:entry, :nature) != "inflow" %>
 <% recurring_data = if outflow
      {
        controller: "recurring-form",
        recurring_form_preview_url_value: preview_recurring_transactions_path(impact: 1),
-       recurring_form_credit_account_ids_value: recurring_credit_account_ids,
+       recurring_form_credit_account_ids_value: credit_account_ids,
        recurring_form_unavailable_text_value: "We couldn't calculate this. You can still save.",
        recurring_form_credit_only_text_value: "Installments only work on credit cards.",
        action: "input->recurring-form#schedulePreview change->recurring-form#schedulePreview"
@@ -47,9 +48,10 @@
     <%= render DS::Disclosure.new(title: "Recurring payment", open: recurrence.present?) do %>
       <%= render "transactions/recurrence_fields",
                  recurrence: recurrence,
-                 installments_available: entry.account&.credit_card? || false,
+                 installments_available: credit_account_ids.include?(entry.account_id),
                  default_first_payment: (entry.date || Date.current).next_month %>
     <% end %>
+    <p class="sr-only" role="status" aria-live="polite" aria-atomic="true" data-recurring-form-target="status"></p>
   <% end %>
 
   <%= render DS::Disclosure.new(title: t(".details")) do %>
