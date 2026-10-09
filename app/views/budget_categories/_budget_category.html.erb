@@ -44,7 +44,7 @@
     </div>
 
     <div class="ml-auto text-right">
-      <p class="text-sm font-medium text-primary"><%= format_money(budget_category.actual_spending_money) %></p>
+      <p class="text-sm font-medium text-primary"><%= format_money(budget_category.actual_spending_money) %><%= " committed" if budget_category.budget.future? %></p>
 
       <% if budget_category.initialized? %>
         <p class="text-sm text-secondary">from <%= format_money(budget_category.budgeted_spending_money) %></p>

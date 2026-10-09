@@ -47,4 +47,35 @@ class BudgetsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes response.body, "Nothing committed for December 2026 yet"
   end
+
+  test "a future month shows what is committed, not spent" do
+    get budget_url("dec-2026"), headers: @frame
+
+    assert_response :success
+    assert_includes response.body, "Committed"
+    assert_includes response.body, "Starts"
+    assert_includes response.body, "120% of your October 2026 budget"
+    assert_includes response.body, %(aria-label="Previous budget: November 2026")
+  end
+
+  test "the last plannable month disables the next chevron with a reason" do
+    get budget_url("oct-2027"), headers: @frame
+
+    assert_response :success
+    assert_includes response.body, "You can plan up to 12 months ahead."
+  end
+
+  test "months past the planning horizon are not found" do
+    get budget_url("nov-2027"), headers: @frame
+
+    assert_response :not_found
+  end
+
+  test "a future category drawer lists its commitments" do
+    get budget_budget_category_url("dec-2026", BudgetCategory.uncategorized.id), headers: { "Turbo-Frame" => "drawer" }
+
+    assert_response :success
+    assert_includes response.body, "Committed in December 2026"
+    assert_includes response.body, "Rent"
+  end
 end

@@ -31,7 +31,7 @@
         <dl class="space-y-3 px-3 py-2">
           <div class="flex items-center justify-between text-sm">
             <dt class="text-secondary">
-              <%= @budget_category.budget.start_date.strftime("%b %Y") %> spending
+              <%= @budget_category.budget.start_date.strftime("%b %Y") %> <%= @budget.future? ? "committed" : "spending" %>
             </dt>
             <dd class="text-primary font-medium">
               <%= format_money @budget_category.actual_spending_money %>
@@ -87,56 +87,71 @@
       </div>
     <% end %>
 
-    <% dialog.with_section(title: "Recent Transactions", open: true) do %>
-      <div class="space-y-2">
-        <div class="px-3 py-4 space-y-2">
-          <% if @recent_transactions.any? %>
-            <ul class="space-y-2 mb-4">
-              <% @recent_transactions.each_with_index do |transaction, index| %>
-                <li class="flex gap-4 text-sm space-y-1">
-                  <div class="flex flex-col items-center gap-1.5 pt-2">
-                    <div class="rounded-full h-1.5 w-1.5 bg-gray-300"></div>
-                    <% unless index == @recent_transactions.length - 1 %>
-                      <div class="h-12 w-px bg-alpha-black-200"></div>
-                    <% end %>
-                  </div>
-
-                  <div class="flex justify-between w-full">
-                    <div>
-                      <p class="text-secondary text-xs uppercase">
-                        <%= transaction.entry.date.strftime("%b %d") %>
-                      </p>
-                      <%= link_to transaction.entry.name,
-                                  transactions_path,
-                                  class: "text-primary hover:underline",
-                                  data: { turbo_frame: :_top } %>
-                    </div>
-                    <p class="text-primary font-medium">
-                      <%= format_money transaction.entry.amount_money %>
-                    </p>
-                  </div>
-                </li>
-              <% end %>
-            </ul>
-
-            <%= render DS::Link.new(
-              text: "View all category transactions",
-              variant: "outline",
-              full_width: true,
-              href: transactions_path(q: {
-                categories: [@budget_category.name],
-                start_date: @budget.start_date,
-                end_date: @budget.end_date
-              }),
-              frame: :_top
-            ) %>
+    <% if @budget.future? %>
+      <% dialog.with_section(title: "Committed in #{@budget.name}", open: true) do %>
+        <% items = @budget.recurring_commitments.items_for(@budget_category.category) %>
+        <div class="space-y-2 pb-4">
+          <% if items.any? %>
+            <% items.group_by(&:date).each do |date, date_items| %>
+              <%= render "recurring_transactions/commitment_group", date: date, items: date_items %>
+            <% end %>
           <% else %>
-            <p class="text-secondary text-sm mb-4">
-              No transactions found for this budget period.
-            </p>
+            <p class="text-secondary text-sm px-3 py-2">Nothing committed in this category.</p>
           <% end %>
         </div>
-      </div>
+      <% end %>
+    <% else %>
+      <% dialog.with_section(title: "Recent Transactions", open: true) do %>
+        <div class="space-y-2">
+          <div class="px-3 py-4 space-y-2">
+            <% if @recent_transactions.any? %>
+              <ul class="space-y-2 mb-4">
+                <% @recent_transactions.each_with_index do |transaction, index| %>
+                  <li class="flex gap-4 text-sm space-y-1">
+                    <div class="flex flex-col items-center gap-1.5 pt-2">
+                      <div class="rounded-full h-1.5 w-1.5 bg-gray-300"></div>
+                      <% unless index == @recent_transactions.length - 1 %>
+                        <div class="h-12 w-px bg-alpha-black-200"></div>
+                      <% end %>
+                    </div>
+
+                    <div class="flex justify-between w-full">
+                      <div>
+                        <p class="text-secondary text-xs uppercase">
+                          <%= transaction.entry.date.strftime("%b %d") %>
+                        </p>
+                        <%= link_to transaction.entry.name,
+                                    transactions_path,
+                                    class: "text-primary hover:underline",
+                                    data: { turbo_frame: :_top } %>
+                      </div>
+                      <p class="text-primary font-medium">
+                        <%= format_money transaction.entry.amount_money %>
+                      </p>
+                    </div>
+                  </li>
+                <% end %>
+              </ul>
+
+              <%= render DS::Link.new(
+                text: "View all category transactions",
+                variant: "outline",
+                full_width: true,
+                href: transactions_path(q: {
+                  categories: [@budget_category.name],
+                  start_date: @budget.start_date,
+                  end_date: @budget.end_date
+                }),
+                frame: :_top
+              ) %>
+            <% else %>
+              <p class="text-secondary text-sm mb-4">
+                No transactions found for this budget period.
+              </p>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
     <% end %>
   <% end %>
 <% end %>

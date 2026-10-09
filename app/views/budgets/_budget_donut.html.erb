@@ -4,9 +4,15 @@
   <div data-donut-chart-target="contentContainer" class="flex justify-center items-center h-full">
     <div data-donut-chart-target="defaultContent" class="flex flex-col items-center">
       <% if budget.initialized? %>
-        <div class="text-gray-600 text-sm mb-2">
-          <span>Spent</span>
-        </div>
+        <% if budget.future? %>
+          <p class="flex items-center gap-1 text-sm font-medium text-primary mb-2">
+            <%= icon "repeat", size: "sm" %><span>Committed</span>
+          </p>
+        <% else %>
+          <div class="text-gray-600 text-sm mb-2">
+            <span>Spent</span>
+          </div>
+        <% end %>
 
         <div class="mb-2 text-3xl font-medium <%= budget.available_to_spend.negative? ? "text-red-500" : "text-primary" %>">
           <%= format_money(budget.actual_spending_money) %>
@@ -18,6 +24,21 @@
           icon: "pencil",
           icon_position: "right",
           size: "sm",
+          href: edit_budget_path(budget)
+        ) %>
+      <% elsif budget.future? && budget.committed_spending.positive? %>
+        <p class="flex items-center gap-1 text-sm font-medium text-primary mb-2">
+          <%= icon "repeat", size: "sm" %><span>Committed</span>
+        </p>
+
+        <div class="mb-2 text-3xl font-medium text-primary">
+          <%= format_money(budget.actual_spending_money) %>
+        </div>
+
+        <%= render DS::Link.new(
+          text: "New budget",
+          size: "sm",
+          icon: "plus",
           href: edit_budget_path(budget)
         ) %>
       <% else %>
