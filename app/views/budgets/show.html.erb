@@ -15,6 +15,10 @@
         <% end %>
       </div>
 
+      <% unless @budget.past? %>
+        <%= render "budgets/recurring_commitments", budget: @budget %>
+      <% end %>
+
       <div>
 
         <% if @budget.initialized? && @budget.available_to_allocate.positive? %>

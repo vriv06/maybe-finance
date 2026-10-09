@@ -1,0 +1,81 @@
+<%# locals: (budget:) %>
+
+<% if budget.committed_spending.zero? %>
+  <% if budget.future? %>
+    <div class="bg-container rounded-xl shadow-border-xs p-4">
+      <div class="flex items-start gap-3 rounded-lg border border-tertiary p-3">
+        <%= icon "calendar-clock" %>
+        <h3 class="text-sm text-primary">Nothing committed for <%= budget.name %> yet</h3>
+      </div>
+    </div>
+  <% end %>
+<% else %>
+  <% percent = budget.commitments_percent %>
+  <% over = budget.commitments_over_budget? %>
+  <% reference = budget.uses_reference_budget? %>
+  <% basis_name = budget.basis_budget&.name %>
+
+  <section class="bg-container rounded-xl shadow-border-xs p-4 space-y-3" aria-labelledby="recurring-commitments-title">
+    <h3 id="recurring-commitments-title" class="text-sm text-secondary flex items-center gap-1.5">
+      <%= icon "repeat", size: "sm" %><span>Recurring payments</span>
+    </h3>
+
+    <p class="tabular-nums">
+      <span class="block text-xl font-medium text-primary"><%= Money.new(budget.committed_spending, budget.currency).format %></span>
+      <span class="block text-sm text-secondary">committed to recurring payments</span>
+    </p>
+
+    <% if percent %>
+      <div class="flex h-1.5 gap-1" aria-hidden="true">
+        <% if over %>
+          <div class="rounded-md h-1.5 bg-destructive w-full"></div>
+        <% else %>
+          <div class="rounded-md h-1.5 bg-inverse" style="width: <%= percent %>%"></div>
+          <div class="rounded-md h-1.5 bg-surface-inset" style="width: <%= 100 - percent %>%"></div>
+        <% end %>
+      </div>
+
+      <% percent_text = reference ? "#{percent}% of your #{basis_name} budget" : "#{percent}% of your budget" %>
+
+      <% if reference && !over %>
+        <div class="space-y-1">
+          <p class="text-sm text-primary font-medium tabular-nums"><%= percent_text %></p>
+          <p class="text-xs text-secondary">Compared with your <%= basis_name %> budget. Set up <%= budget.name %> to use its own.</p>
+        </div>
+      <% else %>
+        <p class="text-sm text-primary font-medium tabular-nums"><%= percent_text %></p>
+      <% end %>
+
+      <% if over %>
+        <% alert_body = capture do %>
+          <p class="font-medium text-pretty tabular-nums">Recurring payments are <%= Money.new(budget.commitments_overage, budget.currency).format %> over your <%= budget.name %> budget</p>
+          <%= render DS::Link.new(
+            text: "Review budget",
+            variant: "outline",
+            size: "sm",
+            class: "mt-3",
+            href: budget.initialized? ? budget_budget_categories_path(budget) : edit_budget_path(budget),
+            aria: { label: "Review #{budget.name} budget" }
+          ) %>
+        <% end %>
+        <%= render DS::Alert.new(message: alert_body, variant: :warning) %>
+      <% end %>
+    <% end %>
+
+    <%= render DS::Disclosure.new(align: :left) do |disclosure| %>
+      <% disclosure.with_summary_content do %>
+        <div class="flex items-center gap-3">
+          <%= icon "chevron-right", class: "group-open:transform group-open:rotate-90" %>
+          <span class="font-medium text-sm text-primary">See<span class="sr-only"> recurring payment</span> details</span>
+        </div>
+      <% end %>
+
+      <div class="space-y-2">
+        <% budget.recurring_commitments.by_date.each do |date, items| %>
+          <%= render "recurring_transactions/commitment_group", date: date, items: items,
+                     compact: true, avatar: false, account: true %>
+        <% end %>
+      </div>
+    <% end %>
+  </section>
+<% end %>
