@@ -98,7 +98,12 @@
       </div>
     <% end %>
 
-    <% dialog.with_section(title: t(".settings")) do %>
+    <% dialog.with_section(title: t(".settings"), open: @entry.errors.any?) do %>
+      <% if @entry.errors.any? %>
+        <div role="alert" class="pb-4">
+          <%= render DS::Alert.new(message: @entry.errors.map(&:message).uniq.to_sentence, variant: :error) %>
+        </div>
+      <% end %>
       <div class="pb-4">
         <%= styled_form_with model: @entry,
               url: transaction_path(@entry),

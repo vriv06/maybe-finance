@@ -58,6 +58,6 @@ class Transaction < ApplicationRecord
       return if @releasing_from_plan || !will_save_change_to_kind?
       return unless PLAN_LOCKED_KINDS.include?(kind_in_database)
 
-      errors.add(:kind, "cannot be changed for a transaction that belongs to an installment plan")
+      errors.add(:kind, "This is part of a recurring payment, so it can't be one-time.")
     end
 end

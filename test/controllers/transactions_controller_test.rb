@@ -190,4 +190,16 @@ end
     get transactions_url(q: { categories: [ "Food" ], types: [ "expense" ] })
     assert_response :success
   end
+
+  test "explains why a recurring row can't become one-time" do
+    installment = create_transaction(amount: 100, account: accounts(:credit_card), kind: "installment")
+
+    patch transaction_url(installment), params: {
+      entry: { entryable_attributes: { id: installment.entryable_id, kind: "one_time" } }
+    }, headers: { "Turbo-Frame" => "drawer" }
+
+    assert_response :unprocessable_entity
+    assert_includes response.body, ERB::Util.html_escape("This is part of a recurring payment, so it can't be one-time.")
+    assert installment.reload.transaction.installment?
+  end
 end

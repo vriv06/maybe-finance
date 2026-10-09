@@ -6,7 +6,13 @@ class TransferMatchesController < ApplicationController
     @transfer_match_candidates = @entry.transaction.transfer_match_candidates
   end
 
+  LOCKED_MESSAGE = "This is part of a recurring payment, so it can't be a transfer.".freeze
+
   def create
+    if Transaction::PLAN_LOCKED_KINDS.include?(@entry.transaction.kind)
+      return redirect_back_or_to transactions_path, alert: LOCKED_MESSAGE
+    end
+
     @transfer = build_transfer
     Transfer.transaction do
       @transfer.save!
@@ -17,6 +23,8 @@ class TransferMatchesController < ApplicationController
     @transfer.sync_account_later
 
     redirect_back_or_to transactions_path, notice: "Transfer created"
+  rescue ActiveRecord::RecordInvalid => e
+    redirect_back_or_to transactions_path, alert: e.record.errors.map(&:message).to_sentence
   end
 
   private
