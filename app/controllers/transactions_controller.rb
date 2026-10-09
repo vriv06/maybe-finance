@@ -1,5 +1,5 @@
 class TransactionsController < ApplicationController
-  include EntryableResource
+  include EntryableResource, RecurrenceParams
 
   before_action :store_params!, only: :index
 
@@ -7,6 +7,7 @@ class TransactionsController < ApplicationController
     super
     @income_categories = Current.family.categories.incomes.alphabetically
     @expense_categories = Current.family.categories.expenses.alphabetically
+    @recurrence = RecurringTransaction.build_from_entry(@entry, **recurrence_attributes) if recurrence_requested?
   end
 
   def index
@@ -56,19 +57,22 @@ class TransactionsController < ApplicationController
   def create
     account = Current.family.accounts.find(params.dig(:entry, :account_id))
     @entry = account.entries.new(entry_params)
+    @recurrence = RecurringTransaction.build_from_entry(@entry, **recurrence_attributes) if recurrence_requested?
 
-    if @entry.save
+    if save_entry_with_recurrence
       @entry.sync_account_later
       @entry.lock_saved_attributes!
       @entry.transaction.lock_attr!(:tag_ids) if @entry.transaction.tags.any?
 
-      flash[:notice] = "Transaction created"
+      flash[:notice] = @recurrence ? recurrence_notice(@recurrence) : "Transaction created"
 
       respond_to do |format|
         format.html { redirect_back_or_to account_path(@entry.account) }
         format.turbo_stream { stream_redirect_back_or_to(account_path(@entry.account)) }
       end
     else
+      @income_categories = Current.family.categories.incomes.alphabetically
+      @expense_categories = Current.family.categories.expenses.alphabetically
       render :new, status: :unprocessable_entity
     end
   end
@@ -109,6 +113,22 @@ class TransactionsController < ApplicationController
   end
 
   private
+    # The entry and its plan are saved together: an invalid plan never leaves a purchase behind
+    def save_entry_with_recurrence
+      Entry.transaction do
+        entry_saved = @entry.save
+        plan_valid = @recurrence.nil? || @recurrence.valid?
+        raise ActiveRecord::Rollback unless entry_saved && plan_valid
+
+        @recurrence = RecurringTransaction.create_from_entry!(@entry, **recurrence_attributes) if @recurrence
+        true
+      end
+    rescue ActiveRecord::RecordInvalid => e
+      Rails.logger.warn("Recurring payment not created: #{e.message}")
+      @recurrence&.errors&.add(:base, RecurringTransaction::GENERIC_ERROR)
+      false
+    end
+
     def per_page
       params[:per_page].to_i.positive? ? params[:per_page].to_i : 20
     end

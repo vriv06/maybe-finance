@@ -202,4 +202,84 @@ end
     assert_includes response.body, ERB::Util.html_escape("This is part of a recurring payment, so it can't be one-time.")
     assert installment.reload.transaction.installment?
   end
+
+  test "creates an installment purchase and its plan together" do
+    travel_to Date.new(2026, 10, 8)
+    card = accounts(:credit_card)
+
+    assert_difference [ "Entry.count", "RecurringTransaction.count" ], 1 do
+      post transactions_url, params: {
+        entry: recurring_entry_params(card, amount: 15000),
+        recurrence: { plan_type: "installments", total_payments: "12", start_date: "2026-11-08" }
+      }
+    end
+
+    entry = Entry.find_by!(name: "iPad Air")
+    assert entry.transaction.msi_purchase?
+    assert_equal 12, entry.transaction.recurring_transaction.total_payments
+    assert_equal "Split into 12 installments.", flash[:notice]
+  end
+
+  test "creates a monthly charge" do
+    travel_to Date.new(2026, 10, 8)
+
+    post transactions_url, params: {
+      entry: recurring_entry_params(accounts(:depository), amount: 299),
+      recurrence: { plan_type: "charge", total_payments: "" }
+    }
+
+    entry = Entry.find_by!(name: "iPad Air")
+    assert_equal 1, entry.transaction.installment_number
+    assert_equal "Monthly charge started.", flash[:notice]
+  end
+
+  test "a blank plan type creates an ordinary transaction" do
+    assert_difference "Entry.count", 1 do
+      assert_no_difference "RecurringTransaction.count" do
+        post transactions_url, params: {
+          entry: recurring_entry_params(accounts(:depository), amount: 50),
+          recurrence: { plan_type: "" }
+        }
+      end
+    end
+
+    assert_equal "Transaction created", flash[:notice]
+  end
+
+  test "an invalid plan saves nothing and explains why" do
+    travel_to Date.new(2026, 10, 8)
+
+    assert_no_difference [ "Entry.count", "RecurringTransaction.count" ] do
+      post transactions_url, params: {
+        entry: recurring_entry_params(accounts(:credit_card), amount: 15000),
+        recurrence: { plan_type: "installments", total_payments: "1", start_date: "2026-11-08" }
+      }, headers: { "Turbo-Frame" => "modal" }
+    end
+
+    assert_response :unprocessable_entity
+    assert_includes response.body, "Enter 2 to 48 installments."
+  end
+
+  test "installments are refused on accounts that aren't credit cards" do
+    travel_to Date.new(2026, 10, 8)
+
+    assert_no_difference "Entry.count" do
+      post transactions_url, params: {
+        entry: recurring_entry_params(accounts(:depository), amount: 1200),
+        recurrence: { plan_type: "installments", total_payments: "3", start_date: "2026-11-08" }
+      }, headers: { "Turbo-Frame" => "modal" }
+    end
+
+    assert_response :unprocessable_entity
+    assert_includes response.body, "Installments only work on credit cards."
+  end
+
+  private
+    def recurring_entry_params(account, amount:)
+      {
+        account_id: account.id, name: "iPad Air", date: "2026-10-08", currency: "USD", amount: amount,
+        nature: "outflow", entryable_type: "Transaction",
+        entryable_attributes: { category_id: categories(:food_and_drink).id }
+      }
+    end
 end
