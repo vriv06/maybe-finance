@@ -10,13 +10,7 @@ class RecurringTransactionsController < ApplicationController
   def update
     return render :show, status: :unprocessable_entity unless @recurring_transaction.status == "active"
 
-    attributes = recurring_transaction_params
-
-    if attributes[:category_id].present? && !Current.family.categories.exists?(attributes[:category_id])
-      @recurring_transaction.assign_attributes(attributes.except(:category_id))
-      @recurring_transaction.errors.add(:base, "Choose a category from your list.")
-      render :show, status: :unprocessable_entity
-    elsif @recurring_transaction.update(attributes)
+    if @recurring_transaction.update(recurring_transaction_params)
       flash.now[:notice] = "Changes saved."
       render_dialog
     else
@@ -47,8 +41,9 @@ class RecurringTransactionsController < ApplicationController
     end
 
     def recurring_transaction_params
-      permitted = params.fetch(:recurring_transaction, {}).permit(:name, :category_id, :amount)
+      permitted = params.require(:recurring_transaction).permit(:name, :category_id, :amount)
       permitted.delete(:amount) unless @recurring_transaction.charge?
+      permitted[:category_id] = Current.family.categories.expenses.find(permitted[:category_id]).id if permitted[:category_id].present?
       permitted
     end
 

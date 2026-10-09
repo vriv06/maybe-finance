@@ -115,24 +115,79 @@ class RecurringTransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Netflix", plan.reload.name
   end
 
-  test "a category from another family is rejected with a 422" do
+  test "a blank amount on a charge re-renders with the error and saves nothing" do
+    plan = create_charge
+
+    patch recurring_transaction_url(plan), params: { recurring_transaction: { name: "Netflix", amount: "" } },
+          headers: { "Turbo-Frame" => "modal" }
+
+    assert_response :unprocessable_entity
+    assert_includes response.body, "Amount is not a number"
+    assert_includes response.body, "$299.00"
+    assert_equal BigDecimal("299"), plan.reload.amount
+  end
+
+  test "a blank name keeps the stop confirm on the saved name" do
+    plan = create_charge
+
+    patch recurring_transaction_url(plan), params: { recurring_transaction: { name: "" } },
+          headers: { "Turbo-Frame" => "modal" }
+
+    assert_response :unprocessable_entity
+    assert_includes response.body, ERB::Util.html_escape("Stop Netflix?")
+    assert_equal "Netflix", plan.reload.name
+  end
+
+  test "a category from another family is not found" do
     plan = create_charge
     foreign = families(:empty).categories.create!(name: "Foreign", color: "#aabbcc", lucide_icon: "shapes")
 
     patch recurring_transaction_url(plan), params: { recurring_transaction: { name: "Netflix", category_id: foreign.id } },
           headers: { "Turbo-Frame" => "modal" }
 
-    assert_response :unprocessable_entity
+    assert_response :not_found
     assert_nil plan.reload.category_id
   end
 
-  test "a missing payload changes nothing and does not crash" do
+  test "an income category is not found" do
+    plan = create_charge
+    income = families(:dylan_family).categories.create!(name: "Salary", color: "#aabbcc", lucide_icon: "shapes", classification: "income")
+
+    patch recurring_transaction_url(plan), params: { recurring_transaction: { name: "Netflix", category_id: income.id } },
+          headers: { "Turbo-Frame" => "modal" }
+
+    assert_response :not_found
+    assert_nil plan.reload.category_id
+  end
+
+  test "a blank category clears it" do
+    plan = create_charge
+    plan.update!(category: families(:dylan_family).categories.expenses.first)
+
+    patch recurring_transaction_url(plan), params: { recurring_transaction: { name: "Netflix", category_id: "" } },
+          headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_nil plan.reload.category_id
+  end
+
+  test "a missing payload is a bad request" do
     plan = create_charge
 
     patch recurring_transaction_url(plan), headers: { "Turbo-Frame" => "modal" }
 
-    assert_response :redirect
+    assert_response :bad_request
     assert_equal "Netflix", plan.reload.name
+  end
+
+  test "saving after payments were added asks for confirmation" do
+    plan = create_charge
+    plan.stubs(:last_handled_number).returns(2)
+    RecurringTransaction.any_instance.stubs(:last_handled_number).returns(2)
+
+    get recurring_transaction_url(plan), headers: { "Turbo-Frame" => "modal" }
+
+    assert_includes response.body, "Keep editing"
+    assert_includes response.body, "Save changes to future payments?"
   end
 
   test "a stopped plan cannot be edited or stopped again" do

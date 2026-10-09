@@ -1,5 +1,7 @@
 <% plan = @recurring_transaction %>
 <% editable = plan.status == "active" %>
+<%# After a failed edit the form keeps what was typed, but the header and confirms describe the saved plan %>
+<% saved = plan.changed? ? Current.family.recurring_transactions.find(plan.id) : plan %>
 
 <%= render DS::Dialog.new(reload_on_close: true) do |dialog| %>
   <% dialog.with_header(hide_close_icon: true) do %>
@@ -7,7 +9,7 @@
       <div class="min-w-0">
         <h2 tabindex="-1" autofocus class="text-lg font-medium text-primary rounded outline-none focus-visible:ring-4 focus-visible:ring-alpha-black-200"><%= plan.name_in_database %></h2>
         <p class="text-sm text-secondary tabular-nums flex flex-wrap items-center gap-x-1">
-          <% recurring_plan_subtitle_parts(plan).each_with_index do |part, index| %>
+          <% recurring_plan_subtitle_parts(saved).each_with_index do |part, index| %>
             <% if index.positive? %><span aria-hidden="true">·</span><% end %>
             <span class="inline-flex items-center gap-1"><%= part %></span>
           <% end %>
@@ -62,7 +64,7 @@
             text: "Save changes",
             type: "submit",
             full_width: true,
-            confirm: (CustomConfirm.for_plan_edit(plan) if plan.last_handled_number.positive?)
+            confirm: (CustomConfirm.for_plan_edit(saved) if saved.last_handled_number.positive?)
           ) %>
         <% end %>
 
@@ -72,7 +74,7 @@
             variant: "outline-destructive",
             href: stop_recurring_transaction_path(plan),
             method: :patch,
-            confirm: CustomConfirm.for_plan_stop(plan)
+            confirm: CustomConfirm.for_plan_stop(saved)
           ) %>
         </div>
       <% else %>
