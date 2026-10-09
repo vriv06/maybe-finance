@@ -66,7 +66,7 @@ export default class extends Controller {
 
     // A response that arrives after the plan was cleared or became unavailable is stale
     if (!this.#planType || !this.#installmentsAllowed) {
-      this.previewTarget.replaceChildren();
+      this.#clearPreview();
       return;
     }
 
