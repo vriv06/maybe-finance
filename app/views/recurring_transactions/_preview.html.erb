@@ -1,0 +1,31 @@
+<%# locals: (plan:, show_impact: false, surface: :inset) %>
+
+<%= turbo_frame_tag "recurring_preview" do %>
+  <% if plan&.valid? %>
+    <% summary = recurring_summary(plan) %>
+    <% impact = plan.budget_impact if show_impact && plan.installments? %>
+    <% impact = nil unless impact&.available? %>
+    <% impact_title = impact && budget_impact_title(impact) %>
+
+    <div class="space-y-3">
+      <div class="<%= class_names("rounded-lg px-3 py-2 flex items-start gap-2", surface == :container ? "bg-container shadow-border-xs" : "bg-container-inset") %>">
+        <%= icon summary.icon, size: "sm", class: "mt-0.5" %>
+
+        <div class="text-sm tabular-nums min-w-0">
+          <p class="text-primary font-medium"><%= summary.line1 %></p>
+          <p class="text-secondary"><%= summary.line2 %></p>
+          <% if summary.past_due %>
+            <p class="text-secondary mt-1"><%= summary.past_due %></p>
+          <% end %>
+        </div>
+      </div>
+
+      <%# Copied by recurring-form into its live region: one announcement per pause %>
+      <span hidden data-recurring-form-announcement><%= [ summary.announcement, impact_title ].compact.join(". ") %></span>
+
+      <% if impact %>
+        <%= render "recurring_transactions/budget_impact", impact: impact, title: impact_title %>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>

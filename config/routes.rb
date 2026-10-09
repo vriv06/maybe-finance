@@ -135,6 +135,11 @@ Rails.application.routes.draw do
     end
   end
 
+  resources :recurring_transactions, only: %i[show update] do
+    get :preview, on: :collection
+    patch :stop, on: :member
+  end
+
   resources :accountable_sparklines, only: :show, param: :accountable_type
 
   direct :entry do |entry, options|
