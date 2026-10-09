@@ -1,0 +1,14 @@
+# Override to run the app against the TEST database (maybe_test) on port 3001,
+# next to a real instance on 3000. Usage (repo root):
+#   docker compose -f compose.yaml build web
+#   docker compose -f compose.yaml -f docs/dev/compose.test-db.yaml up -d --no-deps web worker
+# Running `bin/rails test` reloads fixtures in maybe_test and wipes anything created in the UI.
+services:
+  web:
+    ports: !override
+      - 3001:3000
+    environment:
+      POSTGRES_DB: maybe_test
+  worker:
+    environment:
+      POSTGRES_DB: maybe_test
