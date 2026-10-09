@@ -4,7 +4,14 @@ import { Controller } from "@hotwired/stimulus";
 // Shows the fields of the chosen recurring payment type and asks the server for a
 // live summary 500 ms after the last change. It never formats money or computes payments.
 export default class extends Controller {
-  static targets = ["fields", "installmentsOption", "firstPayment", "preview", "status", "review"];
+  static targets = [
+    "fields",
+    "installmentsOption",
+    "firstPayment",
+    "preview",
+    "status",
+    "review",
+  ];
   static values = {
     previewUrl: String,
     creditAccountIds: Array,
@@ -36,7 +43,11 @@ export default class extends Controller {
   }
 
   syncFirstPayment(event) {
-    if (!this.hasFirstPaymentTarget || this.firstPaymentTarget.dataset.edited === "true") return;
+    if (
+      !this.hasFirstPaymentTarget ||
+      this.firstPaymentTarget.dataset.edited === "true"
+    )
+      return;
 
     const nextMonth = this.#addOneMonth(event.target.value);
     if (nextMonth) this.firstPaymentTarget.value = nextMonth;
@@ -48,7 +59,7 @@ export default class extends Controller {
 
   schedulePreview(event) {
     if (!this.hasPreviewTarget) return;
-    if (event && event.target && !this.#watched(event.target.name)) return;
+    if (event?.target && !this.#watched(event.target.name)) return;
     clearTimeout(this.previewTimeout);
 
     if (!this.#planType) {
@@ -70,7 +81,9 @@ export default class extends Controller {
       return;
     }
 
-    const announcement = this.previewTarget.querySelector("[data-recurring-form-announcement]");
+    const announcement = this.previewTarget.querySelector(
+      "[data-recurring-form-announcement]",
+    );
     this.#announce(announcement ? announcement.textContent.trim() : "");
   }
 
@@ -93,19 +106,30 @@ export default class extends Controller {
   }
 
   get #planType() {
-    const checked = this.element.querySelector('input[name="recurrence[plan_type]"]:checked');
+    const checked = this.element.querySelector(
+      'input[name="recurrence[plan_type]"]:checked',
+    );
     return checked ? checked.value : "";
   }
 
   get #installmentsAllowed() {
     if (this.#planType !== "installments") return true;
-    return this.hasInstallmentsOptionTarget && !this.installmentsOptionTarget.querySelector("input").disabled;
+    return (
+      this.hasInstallmentsOptionTarget &&
+      !this.installmentsOptionTarget.querySelector("input").disabled
+    );
   }
 
   #watched(name) {
     return (
       typeof name === "string" &&
-      (name.startsWith("recurrence[") || ["entry[account_id]", "entry[amount]", "entry[currency]", "entry[date]"].includes(name))
+      (name.startsWith("recurrence[") ||
+        [
+          "entry[account_id]",
+          "entry[amount]",
+          "entry[currency]",
+          "entry[date]",
+        ].includes(name))
     );
   }
 
@@ -135,7 +159,8 @@ export default class extends Controller {
   #syncInstallmentsOption() {
     if (!this.hasInstallmentsOptionTarget) return;
 
-    const accountId = this.accountIdValue || this.#formValue("entry[account_id]");
+    const accountId =
+      this.accountIdValue || this.#formValue("entry[account_id]");
     const isCreditCard = this.creditAccountIdsValue.includes(accountId);
     const radio = this.installmentsOptionTarget.querySelector("input");
 
@@ -145,7 +170,9 @@ export default class extends Controller {
     if (isCreditCard) this.#toggleCreditOnlyNote(false);
 
     if (!isCreditCard && radio.checked) {
-      this.element.querySelector('input[name="recurrence[plan_type]"][value=""]').checked = true;
+      this.element.querySelector(
+        'input[name="recurrence[plan_type]"][value=""]',
+      ).checked = true;
       this.#applyType();
       this.#clearPreview();
       this.#toggleCreditOnlyNote(true);
