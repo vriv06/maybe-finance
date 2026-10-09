@@ -10,6 +10,7 @@ export default class extends Controller {
 
     this.#prepareDialog(data);
 
+    this.element.returnValue = "";
     this.element.showModal();
 
     // With a secondary button, the safe choice gets the initial focus (destructive confirms)
