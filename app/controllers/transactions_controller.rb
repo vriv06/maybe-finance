@@ -7,7 +7,7 @@ class TransactionsController < ApplicationController
     super
     @income_categories = Current.family.categories.incomes.alphabetically
     @expense_categories = Current.family.categories.expenses.alphabetically
-    @recurrence = RecurringTransaction.build_from_entry(@entry, **recurrence_attributes) if recurrence_requested?
+    @recurrence = RecurringTransaction.build_from_entry(@entry, **recurrence_attributes) if recurrence_requested? && @entry.account
   end
 
   def index
@@ -125,7 +125,7 @@ class TransactionsController < ApplicationController
       end
     rescue ActiveRecord::RecordInvalid => e
       Rails.logger.warn("Recurring payment not created: #{e.message}")
-      @recurrence&.errors&.add(:base, RecurringTransaction::GENERIC_ERROR)
+      (@recurrence || @entry).errors.add(:base, RecurringTransaction::GENERIC_ERROR)
       false
     end
 

@@ -258,6 +258,28 @@ end
 
     assert_response :unprocessable_entity
     assert_includes response.body, "Enter 2 to 48 installments."
+    assert_select "details[open]", text: /Recurring payment/
+    assert_select "input#recurrence_total_payments_installments[autofocus]"
+  end
+
+  test "an unexpected failure creating the plan saves nothing and shows the generic message" do
+    RecurringTransaction.expects(:create_from_entry!).raises(ActiveRecord::RecordInvalid.new(RecurringTransaction.new))
+
+    assert_no_difference [ "Entry.count", "RecurringTransaction.count" ] do
+      post transactions_url, params: {
+        entry: recurring_entry_params(accounts(:credit_card), amount: 15000),
+        recurrence: { plan_type: "installments", total_payments: "12", start_date: "2026-11-08" }
+      }, headers: { "Turbo-Frame" => "modal" }
+    end
+
+    assert_response :unprocessable_entity
+    assert_includes response.body, ERB::Util.html_escape(RecurringTransaction::GENERIC_ERROR)
+  end
+
+  test "new with a recurrence choice but no account does not raise" do
+    get new_transaction_url(recurrence: { plan_type: "charge" }), headers: { "Turbo-Frame" => "modal" }
+
+    assert_response :success
   end
 
   test "installments are refused on accounts that aren't credit cards" do
