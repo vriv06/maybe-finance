@@ -96,7 +96,7 @@ Lint and security: `bin/rubocop`, `bundle exec erb_lint <files>`, `bundle exec b
 
 ### Test environment in the browser (:3001 against `maybe_test`)
 ```bash
-docker compose -f compose.yaml build web
+docker compose -f compose.yaml -f docs/dev/compose.test-db.yaml build web
 docker compose -f compose.yaml -f docs/dev/compose.test-db.yaml up -d --no-deps web worker
 ```
 - http://localhost:3001. Use a fixture user with real data: `bob@bobdylan.com`. Its password is the one in `test/test_helper.rb` (`user_password_test`).
@@ -104,7 +104,7 @@ docker compose -f compose.yaml -f docs/dev/compose.test-db.yaml up -d --no-deps 
   ```bash
   docker compose -f compose.yaml exec -T web bin/rails runner 'Transaction.where.not(recurring_transaction_id: nil).update_all(recurring_transaction_id: nil, installment_number: nil); RecurringTransaction.delete_all; BudgetCategory.where.not(budget_id: Budget.select(:id)).delete_all'
   ```
-- ⚠️ The `maybe-finance:local` image tag is shared with a real instance (compose project `maybe-finance`, port 3000). Rebuilding the image does not touch running containers. Recreating the real instance would run this branch's code.
+- ⚠️ ALWAYS build the test environment with the override (`-f docs/dev/compose.test-db.yaml`): it tags the image `maybe-finance:dev`. Without it, the build overwrites `maybe-finance:local`, which the production instance uses (compose project `maybe-finance` in `~/Developer/personal/maybe-finance`). That already happened once: on 2026-10-09 production was recreated with this branch's image and the migration `20261006120000` ran automatically (`db:prepare`). It was fixed on 2026-10-11: production rebuilt from `main`. The migration stays applied (harmless for `main`, zero data created).
 
 ---
 
