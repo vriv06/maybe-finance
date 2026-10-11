@@ -67,8 +67,12 @@ class RecurringTransactionsControllerTest < ActionDispatch::IntegrationTest
     }, headers: @frame
 
     assert_includes response.body, "This puts 3 budgets over. The first is November 2026."
-    assert_includes response.body, "Budget impact of the next 3 installments"
+    assert_includes response.body, "Budget impact of the next 3 payments"
     assert_includes response.body, "Months without a budget use your October 2026 budget."
+    assert_includes response.body, "Expenses in installments"
+    assert_includes response.body, "November 2026: "
+    assert_select "details:not([open]) summary", text: /Monthly projection/
+    assert_select "[data-recurring-form-projection] div.overflow-hidden.rounded-full", 3
   end
 
   test "preview of an existing entry" do
@@ -259,6 +263,31 @@ class RecurringTransactionsControllerTest < ActionDispatch::IntegrationTest
     get recurring_transaction_url(SecureRandom.uuid), headers: { "Turbo-Frame" => "modal" }
 
     assert_response :not_found
+  end
+
+  test "a recurring charge gets the monthly projection too" do
+    family = families(:dylan_family)
+    family.budgets.destroy_all
+    family.budgets.create!(start_date: Date.new(2026, 10, 1), end_date: Date.new(2026, 10, 31),
+                           currency: "USD", budgeted_spending: 1000, expected_income: 3000)
+
+    get preview_recurring_transactions_url, params: {
+      impact: "1",
+      entry: { account_id: @card.id, amount: "50", currency: "USD", date: "2026-10-08" },
+      recurrence: { frequency: "weekly" }
+    }, headers: @frame
+
+    assert_includes response.body, "$50.00 every week"
+    assert_includes response.body, "Monthly projection"
+    assert_includes response.body, "Budget impact of the next 3 months"
+  end
+
+  test "the convert preview never shows the projection" do
+    entry = create_transaction(account: @card, amount: 199, name: "Spotify", date: Date.new(2026, 10, 1))
+
+    get preview_recurring_transactions_url, params: { entry_id: entry.id, recurrence: { frequency: "monthly" } }, headers: @frame
+
+    assert_not_includes response.body, "Monthly projection"
   end
 
   private

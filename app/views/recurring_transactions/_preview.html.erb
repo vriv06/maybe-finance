@@ -3,7 +3,7 @@
 <%= turbo_frame_tag "recurring_preview" do %>
   <% if plan&.valid? %>
     <% summary = recurring_summary(plan) %>
-    <% impact = plan.budget_impact if show_impact && plan.installments? %>
+    <% impact = plan.budget_impact if show_impact %>
     <% impact = nil unless impact&.available? %>
     <% impact_title = impact && budget_impact_title(impact) %>
 
@@ -24,7 +24,13 @@
       <span hidden data-recurring-form-announcement><%= [ summary.announcement, impact_title ].compact.join(". ") %></span>
 
       <% if impact %>
-        <%= render "recurring_transactions/budget_impact", impact: impact, title: impact_title %>
+        <%# Closed by default; recurring-form keeps it open across refreshes once the person opens it.
+            toggle doesn't bubble, so the wrapper listens in the capture phase %>
+        <div data-recurring-form-projection data-action="toggle->recurring-form#projectionToggled:capture">
+          <%= render DS::Disclosure.new(title: "Monthly projection") do %>
+            <%= render "recurring_transactions/budget_impact", impact: impact, title: impact_title %>
+          <% end %>
+        </div>
       <% end %>
     </div>
   <% end %>

@@ -156,6 +156,25 @@ module RecurringTransactionsHelper
     end
   end
 
+  # bi.subtitle / bi.subtitle_months
+  def budget_impact_subtitle(impact)
+    if impact.counts_months?
+      count = impact.months.size
+      count == 1 ? "Budget impact of the next month" : "Budget impact of the next #{count} months"
+    else
+      count = impact.payments_count
+      count == 1 ? "Budget impact of the next payment" : "Budget impact of the next #{count} payments"
+    end
+  end
+
+  # pm.month_sr: what one bar says to a screen reader
+  def budget_impact_month_summary(month)
+    currency = month.budget.currency
+    state = month.over? ? "#{recurring_money(month.overage, currency)} over" : "#{recurring_money(month.basis - month.total, currency)} left"
+
+    "#{month.budget.name}: #{recurring_money(month.total, currency)} of #{recurring_money(month.basis, currency)}, #{state}"
+  end
+
   # Which "Recurring payment" block the drawer's Settings shows (interaction §3.1 + canvas D14)
   def recurrence_block_state(entry)
     transaction = entry.transaction

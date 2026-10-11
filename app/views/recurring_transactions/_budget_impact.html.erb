@@ -1,8 +1,7 @@
 <%# locals: (impact:, title:) %>
 
 <% over_text = "text-red-700 theme-dark:text-red-400" %>
-<% count = impact.payments_count %>
-<% subtitle = count == 1 ? "Budget impact of the next installment" : "Budget impact of the next #{count} installments" %>
+<% subtitle = budget_impact_subtitle(impact) %>
 
 <section aria-labelledby="recurring-impact-title" class="rounded-lg border border-tertiary p-3 flex flex-col gap-3">
   <% if title %>
@@ -21,7 +20,9 @@
     <% impact.months.each do |month| %>
       <% currency = month.budget.currency %>
       <li class="flex flex-col gap-1.5">
-        <div class="flex items-center justify-between text-sm tabular-nums">
+        <p class="sr-only"><%= budget_impact_month_summary(month) %></p>
+
+        <div class="flex items-center justify-between text-sm tabular-nums" aria-hidden="true">
           <span class="text-primary font-medium"><%= month.budget.name %></span>
           <% if month.over? %>
             <span class="font-medium <%= over_text %>"><%= recurring_money(month.overage, currency) %> over</span>
@@ -30,24 +31,33 @@
           <% end %>
         </div>
 
-        <div class="relative flex h-2 rounded bg-surface-inset" aria-hidden="true">
-          <div class="h-2 rounded-l bg-inverse" style="width: <%= impact.width(month.committed) %>%"></div>
-          <div class="h-2 rounded-r bg-destructive" style="width: <%= impact.width(month.purchase) %>%"></div>
+        <%# The track clips the segments, so the bar is always rounded at both ends; the budget mark sits outside it %>
+        <div class="relative" aria-hidden="true">
+          <div class="flex h-2 overflow-hidden rounded-full bg-surface-inset">
+            <div class="h-full bg-inverse" style="width: <%= impact.width(month.committed) %>%"></div>
+            <% month.category_segments.each do |segment| %>
+              <div class="h-full" style="width: <%= impact.width(segment.amount) %>%; background-color: <%= segment.color %>"></div>
+            <% end %>
+            <div class="h-full bg-destructive" style="width: <%= impact.width(month.purchase) %>%"></div>
+          </div>
           <div class="absolute -top-1 h-4 w-0.5 rounded-sm bg-current text-secondary" style="left: <%= impact.width(month.basis) %>%"></div>
         </div>
 
-        <p class="text-xs text-secondary tabular-nums">
-          <%= recurring_money(month.total, currency) %> of <%= recurring_money(month.basis, currency) %> budgeted
+        <p class="text-xs text-secondary tabular-nums" aria-hidden="true">
+          <%= recurring_money(month.total, currency) %> of <%= recurring_money(month.basis, currency) %> budgeted<% if month.estimated? %> <span>·</span> categories avg<% end %>
         </p>
       </li>
     <% end %>
   </ul>
 
-  <div class="flex flex-wrap items-center gap-4 text-xs text-secondary" aria-hidden="true">
-    <span class="flex items-center gap-1.5"><span class="size-2 rounded-sm bg-inverse"></span>Already committed</span>
-    <span class="flex items-center gap-1.5"><span class="size-2 rounded-sm bg-destructive"></span>This purchase</span>
-    <span class="flex items-center gap-1.5"><span class="h-2.5 w-0.5 bg-current"></span>Budget</span>
-  </div>
+  <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-secondary">
+    <li class="flex items-center gap-1.5"><span class="size-2 rounded-sm bg-inverse" aria-hidden="true"></span>Expenses in installments</li>
+    <% impact.category_legend.each do |label, color| %>
+      <li class="flex items-center gap-1.5"><span class="size-2 rounded-sm" style="background-color: <%= color %>" aria-hidden="true"></span><%= label %></li>
+    <% end %>
+    <li class="flex items-center gap-1.5"><span class="size-2 rounded-sm bg-destructive" aria-hidden="true"></span>This purchase</li>
+    <li class="flex items-center gap-1.5"><span class="h-2.5 w-0.5 bg-current" aria-hidden="true"></span>Budget</li>
+  </ul>
 
   <% if (reference = impact.reference_budget) %>
     <p class="text-xs text-secondary">Months without a budget use your <%= reference.name %> budget.</p>

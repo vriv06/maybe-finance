@@ -108,9 +108,11 @@ class RecurringTransaction::BudgetImpact
 
   # Shared bar scale for every month: the budget mark sits at 83.3% and nothing overflows
   def scale
-    return BigDecimal("0") if months.empty?
-
-    [ *months.map { |month| month.basis * BigDecimal("1.2") }, *months.map(&:total) ].max
+    @scale ||= if months.empty?
+      BigDecimal("0")
+    else
+      [ *months.map { |month| month.basis * BigDecimal("1.2") }, *months.map(&:total) ].max
+    end
   end
 
   def width(amount)
@@ -154,11 +156,11 @@ class RecurringTransaction::BudgetImpact
       result
     end
 
-    # Top categories by spend across the months shown. With more than LEGEND_CATEGORIES, Uncategorized joins "Other"
+    # Top categories by spend across the months shown (ties by name). With more than LEGEND_CATEGORIES, Uncategorized joins "Other"
     def rank_categories(rows)
       ranked = rows.group_by { |row| row.category.id }
         .map { |_, group| [ group.first.category, group.sum(BigDecimal("0"), &:amount) ] }
-        .sort_by { |_, amount| -amount }
+        .sort_by { |category, amount| [ -amount, category.name.to_s ] }
         .map(&:first)
 
       ranked.size > LEGEND_CATEGORIES ? ranked.reject { |category| category.id.nil? }.first(LEGEND_CATEGORIES) : ranked
