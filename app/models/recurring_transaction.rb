@@ -97,7 +97,9 @@ class RecurringTransaction < ApplicationRecord
       source = entry.entryable
       originals = { entry => entry.slice(:amount), source => source.slice(:kind, :recurring_transaction_id, :installment_number) }
 
-      transaction do
+      completed = false
+
+      plan = transaction do
         plan = build_from_entry(entry, **attributes)
         plan.save!
 
@@ -113,15 +115,19 @@ class RecurringTransaction < ApplicationRecord
         end
 
         plan.generate_due!
+        completed = true
         plan
       end
-    rescue StandardError
-      # The database rolled back, so the caller's records must not keep the plan's changes
-      originals.each do |record, values|
-        record.assign_attributes(values)
-        record.clear_attribute_changes(values.keys)
+
+      plan
+    ensure
+      unless completed
+        # The plan wasn't created, so the caller's records must not keep its changes in memory
+        originals.each do |record, values|
+          record.assign_attributes(values)
+          record.clear_attribute_changes(values.keys)
+        end
       end
-      raise
     end
   end
 
@@ -191,9 +197,11 @@ class RecurringTransaction < ApplicationRecord
     amount - (1..last_handled_number).sum(BigDecimal("0")) { |number| occurrence_amount(number) }
   end
 
-  # What one budget month of this plan costs: every payment in the month of the next one
-  # (a single payment for monthly and longer frequencies)
+  # What one budget month of this plan costs: every payment in the month of the next one for daily
+  # and weekly plans, a single payment for monthly and longer frequencies
   def monthly_amount
+    return next_payment_amount unless frequency.in?(%w[daily weekly])
+
     anchor = next_payment_number
     month_start, month_end = family.cycle_range_containing(occurrence_date(anchor))
 

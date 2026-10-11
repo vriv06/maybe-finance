@@ -378,6 +378,31 @@ class RecurringTransactionTest < ActiveSupport::TestCase
     assert_equal BigDecimal("50"), plan.next_payment_amount
   end
 
+  test "a month of a daily plan costs every day of the month" do
+    travel_to Date.new(2026, 10, 8)
+    plan = build_plan(plan_type: "charge", frequency: "daily", amount: 10, total_payments: nil, start_date: Date.new(2026, 10, 1))
+    plan.save!
+
+    assert_equal BigDecimal("310"), plan.monthly_amount # Oct 1..31
+  end
+
+  test "a weekly installments plan cut short by its end count only counts the payments that exist" do
+    travel_to Date.new(2026, 10, 8)
+    plan = build_plan(frequency: "weekly", amount: 300, total_payments: 3, start_date: Date.new(2026, 10, 22))
+    plan.save!
+
+    assert_equal BigDecimal("200"), plan.monthly_amount # Oct 22 and 29; the third payment is in November
+  end
+
+  test "a monthly plan counts one payment per month even with a custom cycle end day" do
+    travel_to Date.new(2026, 1, 20)
+    plan = build_plan(frequency: "monthly", amount: 900, total_payments: 3, start_date: Date.new(2026, 1, 31))
+    plan.save!
+    plan.family.update!(cycle_end_day: 29)
+
+    assert_equal BigDecimal("300"), plan.reload.monthly_amount # Jan 31 and Feb 28 share the Jan 30 - Feb 28 cycle
+  end
+
   test "an end count makes installments and no end makes a charge" do
     travel_to Date.new(2026, 10, 8)
     purchase = create_transaction(account: @credit_card, amount: 1200, date: Date.new(2026, 10, 8))
