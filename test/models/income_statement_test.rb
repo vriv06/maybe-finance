@@ -293,4 +293,16 @@ class IncomeStatementTest < ActiveSupport::TestCase
 
     assert_equal 200 + 300 + 400 + 1000, expense_totals.total
   end
+
+  test "recurring-linked rows count by default and are dropped only with exclude_recurring" do
+    plan_entry = create_transaction(account: @checking_account, amount: 500, category: @food_category)
+    RecurringTransaction.create_from_entry!(plan_entry, frequency: "monthly")
+    income_statement = IncomeStatement.new(@family)
+    period = Period.last_30_days
+
+    assert_equal 200 + 300 + 400 + 500, income_statement.expense_totals(period: period).total
+    assert_equal 200 + 300 + 400, income_statement.expense_totals(period: period, exclude_recurring: true).total
+    assert_equal 500, income_statement.median_expense(category: @food_category)
+    assert_equal 0, income_statement.median_expense(category: @food_category, exclude_recurring: true)
+  end
 end

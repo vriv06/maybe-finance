@@ -3,6 +3,7 @@ class Budget < ApplicationRecord
 
   PARAM_DATE_FORMAT = "%b-%Y"
   FUTURE_CYCLES_LIMIT = 12
+  ProjectionCategory = Data.define(:category, :amount, :estimated)
 
   belongs_to :family
 
@@ -363,7 +364,38 @@ class Budget < ApplicationRecord
     commitments_over_budget? ? ratio.ceil : ratio.floor
   end
 
+  # =============================================================================
+  # Monthly projection: category spending recurring payments don't already cover
+  # =============================================================================
+  # Current month: real spending per category. Future months: each category's monthly median, the
+  # "avg" budget rows show. Rows linked to a plan are left out because they are commitments.
+  def category_spend_for_projection
+    @category_spend_for_projection ||= (future? ? average_category_spend : actual_category_spend)
+      .select { |row| row.amount.positive? }
+      .sort_by { |row| -row.amount }
+  end
+
   private
+    def actual_category_spend
+      income_statement.expense_totals(period: period, exclude_recurring: true).category_totals
+        .reject { |category_total| category_total.category.subcategory? }
+        .map { |category_total| ProjectionCategory.new(category: category_total.category, amount: category_total.total.to_d, estimated: false) }
+    end
+
+    # A parent includes its subcategories, like the budget's category rows
+    def average_category_spend
+      categories = family.categories.expenses.to_a
+
+      [ *categories.reject(&:subcategory?), family.categories.uncategorized ].map do |category|
+        children = category.id ? categories.select { |child| child.parent_id == category.id } : []
+        amount = [ category, *children ].sum(BigDecimal("0")) do |member|
+          income_statement.median_expense(category: member, exclude_recurring: true).to_d
+        end
+
+        ProjectionCategory.new(category: category, amount: amount, estimated: true)
+      end
+    end
+
     def income_statement
       @income_statement ||= family.income_statement
     end

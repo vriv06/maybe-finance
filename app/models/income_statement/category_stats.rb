@@ -1,8 +1,9 @@
 class IncomeStatement::CategoryStats
-  def initialize(family, interval: "month", cycle_offset: nil)
+  def initialize(family, interval: "month", cycle_offset: nil, exclude_recurring: false)
     @family = family
     @interval = interval
     @cycle_offset = cycle_offset || 0
+    @exclude_recurring = exclude_recurring
   end
 
   def call
@@ -51,6 +52,7 @@ class IncomeStatement::CategoryStats
           WHERE a.family_id = :family_id
             AND t.kind NOT IN (#{Transaction.budget_excluded_kinds_sql})
             AND ae.excluded = false
+            #{"AND t.recurring_transaction_id IS NULL" if @exclude_recurring}
           GROUP BY c.id, period, CASE WHEN ae.amount < 0 THEN 'income' ELSE 'expense' END
         )
         SELECT

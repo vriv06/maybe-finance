@@ -339,4 +339,38 @@ class BudgetTest < ActiveSupport::TestCase
 
     assert_equal october, december.previous_budget
   end
+
+  test "projection spend is real for the current month and leaves plan rows and excluded kinds out" do
+    travel_to Date.new(2026, 10, 8)
+    account = Account.create!(family: @family, accountable: Depository.new, name: "Checking", status: "active", currency: "USD", balance: 0)
+    food = @family.categories.create!(name: "Food", color: "#e99537", lucide_icon: "utensils", classification: "expense")
+    create_transaction(account: account, date: Date.new(2026, 10, 2), amount: 40, category: food)
+    create_transaction(account: account, date: Date.new(2026, 10, 3), amount: 15)
+    create_transaction(account: account, date: Date.new(2026, 10, 4), amount: 70, category: food, kind: "one_time")
+    rent = create_transaction(account: account, date: Date.new(2026, 10, 5), amount: 900, category: food)
+    RecurringTransaction.create_from_entry!(rent, frequency: "monthly")
+
+    rows = Budget.for_cycle(@family, Date.new(2026, 10, 1)).category_spend_for_projection
+
+    assert_equal [ "Food", "Uncategorized" ], rows.map { |row| row.category.name }
+    assert_equal [ BigDecimal("40"), BigDecimal("15") ], rows.map(&:amount)
+    assert rows.none?(&:estimated)
+  end
+
+  test "projection spend for a future month is each category's average without plan rows" do
+    travel_to Date.new(2026, 10, 8)
+    account = Account.create!(family: @family, accountable: Depository.new, name: "Checking", status: "active", currency: "USD", balance: 0)
+    food = @family.categories.create!(name: "Food", color: "#e99537", lucide_icon: "utensils", classification: "expense")
+    snacks = @family.categories.create!(name: "Snacks", color: "#4da568", lucide_icon: "cookie", classification: "expense", parent: food)
+    create_transaction(account: account, date: Date.new(2026, 9, 10), amount: 60, category: food)
+    create_transaction(account: account, date: Date.new(2026, 9, 12), amount: 20, category: snacks)
+    gym = create_transaction(account: account, date: Date.new(2026, 9, 15), amount: 500, category: food)
+    RecurringTransaction.create_from_entry!(gym, frequency: "monthly")
+
+    rows = Budget.for_cycle(@family, Date.new(2026, 12, 1)).category_spend_for_projection
+
+    assert_equal [ "Food" ], rows.map { |row| row.category.name }
+    assert_equal [ BigDecimal("80") ], rows.map(&:amount) # 60 + its subcategory's 20; the gym charge is a commitment
+    assert rows.all?(&:estimated)
+  end
 end
