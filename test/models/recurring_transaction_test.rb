@@ -430,6 +430,37 @@ class RecurringTransactionTest < ActiveSupport::TestCase
     assert_equal Date.new(2026, 10, 20), plan.end_date
   end
 
+  test "a failed plan creation leaves the entry and transaction as they were" do
+    travel_to Date.new(2026, 10, 8)
+    purchase = create_transaction(account: accounts(:depository), amount: 900, date: Date.new(2026, 8, 20))
+    RecurringTransaction.any_instance.stubs(:generate_due!).raises(ActiveRecord::RecordInvalid.new(RecurringTransaction.new))
+
+    assert_raises(ActiveRecord::RecordInvalid) do
+      RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 3)
+    end
+
+    assert_equal BigDecimal("900"), purchase.amount
+    assert_equal BigDecimal("900"), purchase.reload.amount
+    assert_nil purchase.entryable.recurring_transaction_id
+    assert_nil purchase.entryable.installment_number
+    assert_not purchase.changed?
+  end
+
+  test "deleting payment 1 of an installments plan off a card leaves the plan active and the gap closed" do
+    travel_to Date.new(2026, 10, 8)
+    purchase = create_transaction(account: accounts(:depository), amount: 900, date: Date.new(2026, 8, 20))
+    plan = RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 3)
+
+    purchase.destroy!
+    plan.reload
+    plan.generate_due!
+
+    assert_equal "active", plan.status
+    assert_equal [ 2 ], plan.transactions.pluck(:installment_number)
+    assert_equal 1, plan.remaining_payments
+    assert_equal BigDecimal("300"), plan.remaining_balance
+  end
+
   test "destroying an installments plan off a card keeps its payments" do
     travel_to Date.new(2026, 10, 8)
     purchase = create_transaction(account: accounts(:depository), amount: 900, date: Date.new(2026, 8, 20))

@@ -94,11 +94,13 @@ class RecurringTransaction < ApplicationRecord
     end
 
     def create_from_entry!(entry, **attributes)
+      source = entry.entryable
+      originals = { entry => entry.slice(:amount), source => source.slice(:kind, :recurring_transaction_id, :installment_number) }
+
       transaction do
         plan = build_from_entry(entry, **attributes)
         plan.save!
 
-        source = entry.entryable
         if plan.source_is_first_payment?
           # Installments off a card: the purchase becomes payment 1, so it keeps only its share of the total
           if plan.installments?
@@ -113,6 +115,13 @@ class RecurringTransaction < ApplicationRecord
         plan.generate_due!
         plan
       end
+    rescue StandardError
+      # The database rolled back, so the caller's records must not keep the plan's changes
+      originals.each do |record, values|
+        record.assign_attributes(values)
+        record.clear_attribute_changes(values.keys)
+      end
+      raise
     end
   end
 

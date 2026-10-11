@@ -302,6 +302,23 @@ end
     assert_includes response.body, ERB::Util.html_escape(RecurringTransaction::GENERIC_ERROR)
   end
 
+  test "a failure after the first payment is split re-renders the full amount" do
+    travel_to Date.new(2026, 10, 8)
+    RecurringTransaction.any_instance.stubs(:generate_due!).raises(ActiveRecord::RecordInvalid.new(RecurringTransaction.new))
+
+    assert_no_difference [ "Entry.count", "RecurringTransaction.count" ] do
+      post transactions_url, params: {
+        entry: recurring_entry_params(accounts(:depository), amount: 900),
+        recurrence: { frequency: "monthly", total_payments: "3" }
+      }, headers: { "Turbo-Frame" => "modal" }
+    end
+
+    assert_response :unprocessable_entity
+    assert_select "input[name='entry[amount]']" do |inputs|
+      assert_equal BigDecimal("900"), BigDecimal(inputs.first["value"])
+    end
+  end
+
   test "new with a recurrence choice but no account does not raise" do
     get new_transaction_url(recurrence: { frequency: "monthly" }), headers: { "Turbo-Frame" => "modal" }
 
