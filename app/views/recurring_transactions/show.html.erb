@@ -68,15 +68,14 @@
           ) %>
         <% end %>
 
-        <div class="border-t border-divider pt-4">
-          <%= render DS::Button.new(
-            text: "Stop payments",
-            variant: "outline-destructive",
-            href: stop_recurring_transaction_path(plan),
-            method: :patch,
-            confirm: CustomConfirm.for_plan_stop(saved)
-          ) %>
-        </div>
+        <%= render DS::Button.new(
+          text: "Stop payments",
+          variant: "outline-destructive",
+          href: stop_recurring_transaction_path(plan),
+          method: :patch,
+          full_width: true,
+          confirm: CustomConfirm.for_plan_stop(saved)
+        ) %>
       <% else %>
         <dl class="space-y-3 text-sm">
           <div class="flex justify-between gap-4">
