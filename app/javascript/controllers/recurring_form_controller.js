@@ -1,60 +1,28 @@
 import { Controller } from "@hotwired/stimulus";
 
 // Connects to data-controller="recurring-form"
-// Shows the fields of the chosen recurring payment type and asks the server for a
-// live summary 500 ms after the last change. It never formats money or computes payments.
+// Shows "Ends after" once Repeat has a frequency and asks the server for a live summary
+// 500 ms after the last change. It never formats money or computes payments.
 export default class extends Controller {
-  static targets = [
-    "fields",
-    "installmentsOption",
-    "firstPayment",
-    "preview",
-    "status",
-    "review",
-  ];
+  static targets = ["endsAfter", "preview", "status", "review"];
   static values = {
     previewUrl: String,
-    creditAccountIds: Array,
-    accountId: String,
     unavailableText: String,
-    creditOnlyText: String,
   };
 
   connect() {
-    this.#syncInstallmentsOption();
-    this.#applyType();
-    if (this.#planType) this.schedulePreview();
+    this.#applyFrequency();
+    if (this.#frequency) this.schedulePreview();
   }
 
   disconnect() {
     clearTimeout(this.previewTimeout);
   }
 
-  selectType() {
-    this.#applyType();
-    this.#toggleCreditOnlyNote(false);
+  frequencyChanged() {
+    this.#applyFrequency();
     this.#announce("");
     this.schedulePreview();
-  }
-
-  accountChanged() {
-    this.#syncInstallmentsOption();
-    this.schedulePreview();
-  }
-
-  syncFirstPayment(event) {
-    if (
-      !this.hasFirstPaymentTarget ||
-      this.firstPaymentTarget.dataset.edited === "true"
-    )
-      return;
-
-    const nextMonth = this.#addOneMonth(event.target.value);
-    if (nextMonth) this.firstPaymentTarget.value = nextMonth;
-  }
-
-  markFirstPaymentEdited() {
-    this.firstPaymentTarget.dataset.edited = "true";
   }
 
   schedulePreview(event) {
@@ -62,7 +30,7 @@ export default class extends Controller {
     if (event?.target && !this.#watched(event.target.name)) return;
     clearTimeout(this.previewTimeout);
 
-    if (!this.#planType) {
+    if (!this.#frequency) {
       this.#clearPreview();
       return;
     }
@@ -75,11 +43,13 @@ export default class extends Controller {
   previewLoaded() {
     this.#finishLoading();
 
-    // A response that arrives after the plan was cleared or became unavailable is stale
-    if (!this.#planType || !this.#installmentsAllowed) {
+    // A response that arrives after Repeat went back to None is stale
+    if (!this.#frequency) {
       this.#clearPreview();
       return;
     }
+
+    this.#restoreProjection();
 
     const announcement = this.previewTarget.querySelector(
       "[data-recurring-form-announcement]",
@@ -105,19 +75,20 @@ export default class extends Controller {
     this.#announce(this.unavailableTextValue);
   }
 
-  get #planType() {
-    const checked = this.element.querySelector(
-      'input[name="recurrence[plan_type]"]:checked',
-    );
-    return checked ? checked.value : "";
+  // The Monthly projection disclosure is re-rendered with every summary; keep it as the person left it
+  projectionToggled(event) {
+    if (event.target instanceof HTMLDetailsElement) {
+      this.projectionOpen = event.target.open;
+    }
   }
 
-  get #installmentsAllowed() {
-    if (this.#planType !== "installments") return true;
-    return (
-      this.hasInstallmentsOptionTarget &&
-      !this.installmentsOptionTarget.querySelector("input").disabled
-    );
+  get #frequency() {
+    const select = this.#form.elements.namedItem("recurrence[frequency]");
+    return select ? select.value : "";
+  }
+
+  get #form() {
+    return this.element.closest("form") || this.element;
   }
 
   #watched(name) {
@@ -133,51 +104,26 @@ export default class extends Controller {
     );
   }
 
-  #toggleCreditOnlyNote(visible) {
-    const note = this.element.querySelector("[data-recurring-form-note]");
-    if (note) note.hidden = !visible;
-  }
+  #applyFrequency() {
+    const repeats = this.#frequency !== "";
 
-  get #form() {
-    return this.element.closest("form") || this.element;
-  }
-
-  #applyType() {
-    const type = this.#planType;
-
-    this.fieldsTargets.forEach((group) => {
-      const active = group.dataset.planType === type;
-      group.hidden = !active;
-      group.querySelectorAll("input, select").forEach((input) => {
-        input.disabled = !active;
+    if (this.hasEndsAfterTarget) {
+      this.endsAfterTarget.hidden = !repeats;
+      this.endsAfterTarget.querySelectorAll("input").forEach((input) => {
+        input.disabled = !repeats;
       });
-    });
+    }
 
-    if (this.hasReviewTarget) this.reviewTarget.disabled = type === "";
+    if (this.hasReviewTarget) this.reviewTarget.disabled = !repeats;
   }
 
-  #syncInstallmentsOption() {
-    if (!this.hasInstallmentsOptionTarget) return;
+  #restoreProjection() {
+    if (!this.projectionOpen) return;
 
-    const accountId =
-      this.accountIdValue || this.#formValue("entry[account_id]");
-    const isCreditCard = this.creditAccountIdsValue.includes(accountId);
-    const radio = this.installmentsOptionTarget.querySelector("input");
-
-    this.installmentsOptionTarget.hidden = !isCreditCard;
-    radio.disabled = !isCreditCard;
-
-    if (isCreditCard) this.#toggleCreditOnlyNote(false);
-
-    if (!isCreditCard && radio.checked) {
-      this.element.querySelector(
-        'input[name="recurrence[plan_type]"][value=""]',
-      ).checked = true;
-      this.#applyType();
-      this.#clearPreview();
-      this.#toggleCreditOnlyNote(true);
-      this.#announce(this.creditOnlyTextValue);
-    }
+    const details = this.previewTarget.querySelector(
+      "[data-recurring-form-projection] details",
+    );
+    if (details) details.open = true;
   }
 
   #loadPreview() {
@@ -189,9 +135,8 @@ export default class extends Controller {
       "entry[amount]",
       "entry[currency]",
       "entry[date]",
-      "recurrence[plan_type]",
+      "recurrence[frequency]",
       "recurrence[total_payments]",
-      "recurrence[start_date]",
     ].forEach((name) => {
       const value = data.get(name);
       if (value !== null) url.searchParams.set(name, value);
@@ -221,26 +166,5 @@ export default class extends Controller {
     if (this.hasStatusTarget && this.statusTarget.textContent !== text) {
       this.statusTarget.textContent = text;
     }
-  }
-
-  #formValue(name) {
-    const field = this.#form.elements.namedItem(name);
-    return field ? field.value : "";
-  }
-
-  // Same rule as Ruby's Date#next_month: Jan 31 -> Feb 28
-  #addOneMonth(isoDate) {
-    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate || "");
-    if (!match) return null;
-
-    const year = Number(match[1]);
-    const month = Number(match[2]);
-    const day = Number(match[3]);
-    const targetYear = month === 12 ? year + 1 : year;
-    const targetMonth = month === 12 ? 1 : month + 1;
-    const lastDay = new Date(Date.UTC(targetYear, targetMonth, 0)).getUTCDate();
-    const pad = (n) => String(n).padStart(2, "0");
-
-    return `${targetYear}-${pad(targetMonth)}-${pad(Math.min(day, lastDay))}`;
   }
 }

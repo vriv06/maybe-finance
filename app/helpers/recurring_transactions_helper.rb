@@ -156,11 +156,6 @@ module RecurringTransactionsHelper
     end
   end
 
-  # Accounts whose new transactions can be split into installments (manual, active credit cards)
-  def recurring_credit_account_ids
-    Current.family.accounts.manual.active.where(accountable_type: "CreditCard").pluck(:id)
-  end
-
   # Which "Recurring payment" block the drawer's Settings shows (interaction §3.1 + canvas D14)
   def recurrence_block_state(entry)
     transaction = entry.transaction

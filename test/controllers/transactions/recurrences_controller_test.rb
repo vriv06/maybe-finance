@@ -13,11 +13,12 @@ class Transactions::RecurrencesControllerTest < ActionDispatch::IntegrationTest
     @installments = { frequency: "monthly", total_payments: "3" }
   end
 
-  test "opens the fields with Doesn't repeat selected" do
+  test "opens the fields with Repeat set to None" do
     get new_transaction_recurrence_url(@entry), headers: @frame
 
     assert_response :success
-    assert_includes response.body, ERB::Util.html_escape("Doesn't repeat")
+    assert_select "select#recurrence_frequency option[selected]", text: "None"
+    assert_select "select#recurrence_frequency[autofocus]"
     assert_includes response.body, "Review"
   end
 
@@ -81,6 +82,8 @@ class Transactions::RecurrencesControllerTest < ActionDispatch::IntegrationTest
     get new_transaction_recurrence_url(@entry), params: { recurrence: @installments.merge(frequency: "bogus") }, headers: @frame
 
     assert_response :unprocessable_entity
+    assert_includes response.body, "Choose how often it repeats."
+    assert_select "select#recurrence_frequency[autofocus][aria-invalid='true']"
 
     assert_no_difference "RecurringTransaction.count" do
       post transaction_recurrence_url(@entry), params: { recurrence: @installments.merge(frequency: "bogus") }, headers: @frame

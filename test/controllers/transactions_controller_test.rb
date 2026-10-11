@@ -246,7 +246,7 @@ end
     assert_equal "Transaction created", flash[:notice]
   end
 
-  test "an invalid plan saves nothing and explains why" do
+  test "an invalid end count saves nothing and explains why" do
     travel_to Date.new(2026, 10, 8)
 
     assert_no_difference [ "Entry.count", "RecurringTransaction.count" ] do
@@ -258,8 +258,8 @@ end
 
     assert_response :unprocessable_entity
     assert_includes response.body, "Enter 2 to 48 payments."
-    assert_select "details[open]", text: /Recurring payment/
-    assert_select "input#recurrence_total_payments_installments[autofocus]"
+    assert_select "select#recurrence_frequency option[selected][value='monthly']"
+    assert_select "input#recurrence_total_payments[autofocus][aria-invalid='true']"
   end
 
   test "an out-of-range end count is refused, not a 500" do
@@ -369,6 +369,8 @@ end
     end
 
     assert_response :unprocessable_entity
+    assert_includes response.body, "Choose how often it repeats."
+    assert_select "select#recurrence_frequency[autofocus][aria-invalid='true']"
   end
 
   test "a tampered recurrence param creates an ordinary transaction" do
@@ -510,6 +512,25 @@ end
     assert_includes response.body, "Set by the plan."
     assert_not_includes response.body, "One-time Expense"
     assert_not_includes response.body, "Open matcher"
+  end
+
+  test "the expense form offers Repeat under Date with None selected" do
+    get new_transaction_url(nature: "outflow"), headers: { "Turbo-Frame" => "modal" }
+
+    assert_response :success
+    assert_select "select#recurrence_frequency option", 8
+    assert_select "select#recurrence_frequency option[selected]", text: "None"
+    assert_select "[data-recurring-form-target='endsAfter'][hidden] input#recurrence_total_payments[disabled]"
+    assert_not_includes response.body, "Recurring payment"
+    assert_not_includes response.body, "First payment"
+    assert_not_includes response.body, "Number of installments"
+  end
+
+  test "the income form has no Repeat" do
+    get new_transaction_url(nature: "inflow"), headers: { "Turbo-Frame" => "modal" }
+
+    assert_response :success
+    assert_select "select#recurrence_frequency", 0
   end
 
   private
