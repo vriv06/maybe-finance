@@ -22,7 +22,7 @@
   <% end %>
 
   <% dialog.with_body do %>
-    <div class="space-y-4 pb-4">
+    <div class="space-y-4">
       <% if editable && plan.installments? %>
         <% paid = plan.last_handled_number %>
         <% paid_percent = (paid * 100.0 / plan.total_payments).round(2) %>
