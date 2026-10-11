@@ -3,6 +3,7 @@
 #   docker compose -f compose.yaml -f docs/dev/compose.test-db.yaml build web
 #   docker compose -f compose.yaml -f docs/dev/compose.test-db.yaml up -d --no-deps web worker
 # Running `bin/rails test` reloads fixtures in maybe_test and wipes anything created in the UI.
+# Set DEV_DB=maybe_staging (a copy of production data) to run the app against that database instead.
 #
 # Always build with this override so the branch image is tagged maybe-finance:dev and never
 # overwrites maybe-finance:local, which the production instance (project maybe-finance) uses:
@@ -13,8 +14,8 @@ services:
     ports: !override
       - 3001:3000
     environment:
-      POSTGRES_DB: maybe_test
+      POSTGRES_DB: ${DEV_DB:-maybe_test}
   worker:
     image: maybe-finance:dev
     environment:
-      POSTGRES_DB: maybe_test
+      POSTGRES_DB: ${DEV_DB:-maybe_test}
