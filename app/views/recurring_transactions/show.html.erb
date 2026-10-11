@@ -27,10 +27,7 @@
         <% paid = plan.last_handled_number %>
         <% paid_percent = (paid * 100.0 / plan.total_payments).round(2) %>
         <div>
-          <div class="flex h-1.5 mb-3 gap-1" aria-hidden="true">
-            <div class="rounded-md h-1.5 bg-inverse" style="width: <%= paid_percent %>%"></div>
-            <div class="rounded-md h-1.5 bg-surface-inset" style="width: <%= 100 - paid_percent %>%"></div>
-          </div>
+          <%= render "shared/segmented_bar", segments: [ [ "bg-inverse", paid_percent ] ], class: "mb-3" %>
           <div class="flex justify-between text-sm tabular-nums">
             <p class="text-secondary"><%= paid %> of <%= plan.total_payments %> paid</p>
             <p class="text-primary font-medium text-right"><%= recurring_money(plan.remaining_balance, plan.currency) %> left</p>

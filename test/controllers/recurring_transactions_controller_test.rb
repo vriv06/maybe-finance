@@ -86,8 +86,9 @@ class RecurringTransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "This purchase"
     assert_includes response.body, "November 2026: "
     assert_select "details:not([open]) summary", text: /Monthly projection/
-    # The filled part of each bar is its own clipped, rounded box, so its last segment is rounded
-    assert_select "[data-recurring-form-projection] div.h-2.rounded-full > div.flex.overflow-hidden.rounded-full", 3
+    # Same segmented bar as the budget's: every segment, including the last filled one, is rounded
+    assert_select "[data-recurring-form-projection] div.flex.h-1\\.5.gap-1", 3
+    assert_select "[data-recurring-form-projection] div.flex.h-1\\.5.gap-1 > div.rounded-md.h-1\\.5"
   end
 
   test "preview of an existing entry" do
@@ -294,7 +295,7 @@ class RecurringTransactionsControllerTest < ActionDispatch::IntegrationTest
 
     assert_includes response.body, "$50.00 every week"
     assert_includes response.body, "Monthly projection"
-    assert_select "[data-recurring-form-projection] div.h-2.rounded-full", 3
+    assert_select "[data-recurring-form-projection] div.flex.h-1\\.5.gap-1", 3
   end
 
   test "the convert preview never shows the projection" do

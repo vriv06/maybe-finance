@@ -24,19 +24,10 @@
           <% end %>
         </div>
 
-        <%# Filled segments sit in their own clipped, rounded box so the last segment is always rounded; the budget mark sits outside it %>
-        <% segments = [ [ "bg-pink-500", month.category_spend ], [ "bg-destructive", month.committed ], [ "bg-inverse", month.purchase ] ].select { |_, amount| amount.to_d.positive? } %>
-        <% filled = segments.sum { |_, amount| amount.to_d } %>
+        <%# Same segmented bar as the budget's; the budget mark overlays it %>
+        <% segments = [ [ "bg-pink-500", month.category_spend ], [ "bg-destructive", month.committed ], [ "bg-inverse", month.purchase ] ].map { |klass, amount| [ klass, impact.width(amount.to_d) ] } %>
         <div class="relative" aria-hidden="true">
-          <div class="h-2 rounded-full bg-surface-inset">
-            <% if filled.positive? %>
-              <div class="flex h-full overflow-hidden rounded-full" style="width: <%= impact.width(filled) %>%">
-                <% segments.each do |klass, amount| %>
-                  <div class="h-full <%= klass %>" style="width: <%= (amount.to_d / filled * 100).round(2) %>%"></div>
-                <% end %>
-              </div>
-            <% end %>
-          </div>
+          <%= render "shared/segmented_bar", segments: segments %>
           <div class="absolute -top-1 h-4 w-0.5 -translate-x-1/2 rounded-sm bg-current text-secondary" style="left: <%= impact.width(month.basis) %>%"></div>
         </div>
 

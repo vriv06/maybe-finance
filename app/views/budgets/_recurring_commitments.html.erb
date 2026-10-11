@@ -26,14 +26,7 @@
     </p>
 
     <% if percent %>
-      <div class="flex h-1.5 gap-1" aria-hidden="true">
-        <% if over %>
-          <div class="rounded-md h-1.5 bg-destructive w-full"></div>
-        <% else %>
-          <div class="rounded-md h-1.5 bg-inverse" style="width: <%= percent %>%"></div>
-          <div class="rounded-md h-1.5 bg-surface-inset" style="width: <%= 100 - percent %>%"></div>
-        <% end %>
-      </div>
+      <%= render "shared/segmented_bar", segments: [ over ? [ "bg-destructive", 100 ] : [ "bg-inverse", percent ] ] %>
 
       <% percent_text = reference ? "#{percent}% of your #{basis_name} budget" : "#{percent}% of your budget" %>
 
