@@ -80,12 +80,14 @@ class RecurringTransactionsControllerTest < ActionDispatch::IntegrationTest
     }, headers: @frame
 
     assert_includes response.body, "This puts 3 budgets over. The first is November 2026."
-    assert_includes response.body, "Budget impact of the next 3 payments"
-    assert_includes response.body, "Months without a budget use your October 2026 budget."
-    assert_includes response.body, "Expenses in installments"
+    assert_not_includes response.body, "Budget impact of the next"
+    assert_not_includes response.body, "Months without a budget use"
+    [ "Monthly expenses", "Recurring expenses", "This expense" ].each { |label| assert_includes response.body, label }
+    assert_not_includes response.body, "This purchase"
     assert_includes response.body, "November 2026: "
     assert_select "details:not([open]) summary", text: /Monthly projection/
-    assert_select "[data-recurring-form-projection] div.overflow-hidden.rounded-full", 3
+    # The filled part of each bar is its own clipped, rounded box, so its last segment is rounded
+    assert_select "[data-recurring-form-projection] div.h-2.rounded-full > div.flex.overflow-hidden.rounded-full", 3
   end
 
   test "preview of an existing entry" do
@@ -292,7 +294,7 @@ class RecurringTransactionsControllerTest < ActionDispatch::IntegrationTest
 
     assert_includes response.body, "$50.00 every week"
     assert_includes response.body, "Monthly projection"
-    assert_includes response.body, "Budget impact of the next 3 months"
+    assert_select "[data-recurring-form-projection] div.h-2.rounded-full", 3
   end
 
   test "the convert preview never shows the projection" do

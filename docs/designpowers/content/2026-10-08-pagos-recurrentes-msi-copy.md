@@ -406,3 +406,16 @@ Kept: `bi.title_over`, `bi.title_over_multi`, `bi.month_over`, `bi.month_percent
 ### 14.6 Removed (2026-10-11)
 
 `b1.disclosure_title` (capture), `b1.type_label`, `b1.type_none`, `b1.type_charge`, `b1.type_installments`, `b1.payments_label_installments`, `b1.payments_label_charge` (now `r.ends_after_label`), `b1.first_payment_label`, `b.err.installments_credit_only`, `b.err.first_payment_missing`, `b.err.first_payment_before_purchase`, `b.err.payments_range_installments` (now `r.err.payments_range`), `bi.legend_committed`, `c2.msi_col_monthly` / `c2.charges_col_amount` ("Per month").
+
+### 14.6 Monthly projection — Victor revision (2026-10-11)
+
+Legend has exactly four labels; per-category segments and the subtitle/reference lines are removed.
+
+| ID | String | Context |
+|---|---|---|
+| `pm.legend_monthly` | Monthly expenses | Pink (`bg-pink-500`): the month's non-recurring spend (current month actual, future months category averages), one segment |
+| `pm.legend_recurring` | Recurring expenses | Red (`bg-destructive`): all recurring commitments in the month (replaces "Expenses in installments") |
+| `pm.legend_this` | This expense | White/inverse (`bg-inverse`): this transaction's payments (replaces "This purchase") |
+| `pm.legend_budget` | Budget | Marker, unchanged |
+
+Removed: `bi.subtitle` / `bi.subtitle_months` ("Budget impact of the next N payments/months"), `bi.reference` ("Months without a budget use your {month} budget."), the per-category legend. The over-budget title (`bi.title_over*`) stays.

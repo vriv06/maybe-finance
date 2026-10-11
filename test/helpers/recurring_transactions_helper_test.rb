@@ -100,13 +100,6 @@ class RecurringTransactionsHelperTest < ActionView::TestCase
     assert_nil recurrence_block_state(entry)
   end
 
-  test "the projection subtitle counts payments, or months for daily and weekly plans" do
-    assert_equal "Budget impact of the next 3 payments", budget_impact_subtitle(stub(counts_months?: false, payments_count: 3))
-    assert_equal "Budget impact of the next payment", budget_impact_subtitle(stub(counts_months?: false, payments_count: 1))
-    assert_equal "Budget impact of the next 3 months", budget_impact_subtitle(stub(counts_months?: true, months: [ 1, 2, 3 ]))
-    assert_equal "Budget impact of the next month", budget_impact_subtitle(stub(counts_months?: true, months: [ 1 ]))
-  end
-
   test "each projection bar has a spoken summary" do
     budget = stub(name: "November 2026", currency: "USD")
     over = stub(budget: budget, total: BigDecimal("7801"), basis: BigDecimal("7500"), over?: true, overage: BigDecimal("301"))
@@ -114,15 +107,6 @@ class RecurringTransactionsHelperTest < ActionView::TestCase
 
     assert_equal "November 2026: $7,801.00 of $7,500.00, $301.00 over", budget_impact_month_summary(over)
     assert_equal "November 2026: $7,301.00 of $7,500.00, $199.00 left", budget_impact_month_summary(under)
-  end
-
-  test "projection colors accept only hex values" do
-    assert_equal "#e99537", projection_color("#e99537")
-    assert_equal "#fff", projection_color("#fff")
-    assert_equal "#e9953780", projection_color("#e9953780")
-    assert_equal Category::UNCATEGORIZED_COLOR, projection_color("red; background-image:url(https://example.com/x)")
-    assert_equal Category::UNCATEGORIZED_COLOR, projection_color("#12")
-    assert_equal Category::UNCATEGORIZED_COLOR, projection_color(nil)
   end
 
   private

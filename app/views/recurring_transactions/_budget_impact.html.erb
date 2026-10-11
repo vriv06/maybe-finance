@@ -1,19 +1,12 @@
 <%# locals: (impact:, title:) %>
 
 <% over_text = "text-red-700 theme-dark:text-red-400" %>
-<% subtitle = budget_impact_subtitle(impact) %>
-
-<section aria-labelledby="recurring-impact-title" class="rounded-lg border border-tertiary p-3 flex flex-col gap-3">
+<section <%= title ? 'aria-labelledby="recurring-impact-title"'.html_safe : 'aria-label="Monthly projection"'.html_safe %> class="rounded-lg border border-tertiary p-3 flex flex-col gap-3">
   <% if title %>
     <div class="flex items-start gap-2">
       <%= icon "alert-triangle", size: "sm", color: "current", class: "mt-0.5 #{over_text}" %>
-      <div class="text-sm tabular-nums min-w-0">
-        <p id="recurring-impact-title" class="font-medium <%= over_text %>"><%= title %></p>
-        <p class="text-secondary"><%= subtitle %></p>
-      </div>
+      <p id="recurring-impact-title" class="text-sm font-medium tabular-nums min-w-0 <%= over_text %>"><%= title %></p>
     </div>
-  <% else %>
-    <p id="recurring-impact-title" class="text-sm font-medium text-primary"><%= subtitle %></p>
   <% end %>
 
   <ul class="flex flex-col gap-3">
@@ -31,14 +24,18 @@
           <% end %>
         </div>
 
-        <%# The track clips the segments, so the bar is always rounded at both ends; the budget mark sits outside it %>
+        <%# Filled segments sit in their own clipped, rounded box so the last segment is always rounded; the budget mark sits outside it %>
+        <% segments = [ [ "bg-pink-500", month.category_spend ], [ "bg-destructive", month.committed ], [ "bg-inverse", month.purchase ] ].select { |_, amount| amount.to_d.positive? } %>
+        <% filled = segments.sum { |_, amount| amount.to_d } %>
         <div class="relative" aria-hidden="true">
-          <div class="flex h-2 overflow-hidden rounded-full bg-surface-inset">
-            <div class="h-full bg-inverse" style="width: <%= impact.width(month.committed) %>%"></div>
-            <% month.category_segments.each do |segment| %>
-              <div class="h-full" style="width: <%= impact.width(segment.amount) %>%; background-color: <%= projection_color(segment.color) %>"></div>
+          <div class="h-2 rounded-full bg-surface-inset">
+            <% if filled.positive? %>
+              <div class="flex h-full overflow-hidden rounded-full" style="width: <%= impact.width(filled) %>%">
+                <% segments.each do |klass, amount| %>
+                  <div class="h-full <%= klass %>" style="width: <%= (amount.to_d / filled * 100).round(2) %>%"></div>
+                <% end %>
+              </div>
             <% end %>
-            <div class="h-full bg-destructive" style="width: <%= impact.width(month.purchase) %>%"></div>
           </div>
           <div class="absolute -top-1 h-4 w-0.5 -translate-x-1/2 rounded-sm bg-current text-secondary" style="left: <%= impact.width(month.basis) %>%"></div>
         </div>
@@ -51,15 +48,9 @@
   </ul>
 
   <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-secondary">
-    <li class="flex items-center gap-1.5"><span class="size-2 rounded-sm bg-inverse" aria-hidden="true"></span>Expenses in installments</li>
-    <% impact.category_legend.each do |label, color| %>
-      <li class="flex items-center gap-1.5"><span class="size-2 rounded-sm" style="background-color: <%= projection_color(color) %>" aria-hidden="true"></span><%= label %></li>
-    <% end %>
-    <li class="flex items-center gap-1.5"><span class="size-2 rounded-sm bg-destructive" aria-hidden="true"></span>This purchase</li>
+    <li class="flex items-center gap-1.5"><span class="size-2 rounded-sm bg-pink-500" aria-hidden="true"></span>Monthly expenses</li>
+    <li class="flex items-center gap-1.5"><span class="size-2 rounded-sm bg-destructive" aria-hidden="true"></span>Recurring expenses</li>
+    <li class="flex items-center gap-1.5"><span class="size-2 rounded-sm bg-inverse" aria-hidden="true"></span>This expense</li>
     <li class="flex items-center gap-1.5"><span class="h-2.5 w-0.5 bg-current" aria-hidden="true"></span>Budget</li>
   </ul>
-
-  <% if (reference = impact.reference_budget) %>
-    <p class="text-xs text-secondary">Months without a budget use your <%= reference.name %> budget.</p>
-  <% end %>
 </section>

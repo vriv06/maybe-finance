@@ -24,11 +24,6 @@ module RecurringTransactionsHelper
     [ [ "None", "" ], *FREQUENCY_LABELS.map { |value, label| [ label, value ] } ]
   end
 
-  # Category colors are user input that ends up in a style attribute, so only hex values pass
-  def projection_color(color)
-    color.to_s.match?(/\A#(\h{3}|\h{6}|\h{8})\z/) ? color : Category::UNCATEGORIZED_COLOR
-  end
-
   def recurring_every(plan)
     "every #{FREQUENCY_UNITS.fetch(plan.frequency)}"
   end
@@ -158,17 +153,6 @@ module RecurringTransactionsHelper
       "This puts #{over.size} budgets over. The first is #{first.budget.name}."
     else
       "This puts #{first.budget.name} #{recurring_money(first.overage, first.budget.currency)} over budget"
-    end
-  end
-
-  # bi.subtitle / bi.subtitle_months
-  def budget_impact_subtitle(impact)
-    if impact.counts_months?
-      count = impact.months.size
-      count == 1 ? "Budget impact of the next month" : "Budget impact of the next #{count} months"
-    else
-      count = impact.payments_count
-      count == 1 ? "Budget impact of the next payment" : "Budget impact of the next #{count} payments"
     end
   end
 
