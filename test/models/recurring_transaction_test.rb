@@ -331,6 +331,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
     plan.save!
 
     assert_not plan.update(total_payments: 6)
+    assert_not plan.reload.update(frequency: "weekly")
     assert plan.reload.update(name: "New laptop")
   end
 
@@ -350,10 +351,48 @@ class RecurringTransactionTest < ActiveSupport::TestCase
     plan.save!
 
     assert_equal BigDecimal("333.33"), plan.monthly_amount
+    assert_equal BigDecimal("333.33"), plan.next_payment_amount
     assert_nil plan.ended_on
 
     plan.cancel!
     assert_equal plan.updated_at.to_date, plan.ended_on
+  end
+
+  test "occurrence dates follow the frequency and clamp to shorter months" do
+    {
+      "daily" => [ Date.new(2026, 1, 31), Date.new(2026, 2, 1), Date.new(2026, 2, 2) ],
+      "weekly" => [ Date.new(2026, 1, 31), Date.new(2026, 2, 7), Date.new(2026, 2, 14) ],
+      "monthly" => [ Date.new(2026, 1, 31), Date.new(2026, 2, 28), Date.new(2026, 3, 31) ],
+      "bimonthly" => [ Date.new(2025, 12, 31), Date.new(2026, 2, 28), Date.new(2026, 4, 30) ],
+      "quarterly" => [ Date.new(2025, 11, 30), Date.new(2026, 2, 28), Date.new(2026, 5, 30) ],
+      "semiannual" => [ Date.new(2025, 8, 31), Date.new(2026, 2, 28), Date.new(2026, 8, 31) ],
+      "annual" => [ Date.new(2024, 2, 29), Date.new(2025, 2, 28), Date.new(2026, 2, 28) ]
+    }.each do |frequency, dates|
+      plan = build_plan(frequency: frequency, start_date: dates.first)
+
+      assert_equal dates, (1..3).map { |n| plan.occurrence_date(n) }, frequency
+    end
+  end
+
+  test "a weekly plan ends on its last weekly payment" do
+    assert_equal Date.new(2026, 10, 15), build_plan(frequency: "weekly", start_date: Date.new(2026, 10, 1)).end_date
+  end
+
+  test "frequency must be one of the supported ones" do
+    plan = build_plan(frequency: "fortnightly")
+
+    assert_not plan.valid?
+    assert_equal [ "Choose how often it repeats." ], plan.errors[:frequency]
+    assert build_plan(frequency: "weekly").valid?
+  end
+
+  test "a month of a weekly plan costs every payment in the month of the next one" do
+    travel_to Date.new(2026, 10, 8)
+    plan = build_plan(plan_type: "charge", frequency: "weekly", amount: 50, total_payments: nil, start_date: Date.new(2026, 10, 1))
+    plan.save!
+
+    assert_equal BigDecimal("250"), plan.monthly_amount # Oct 1, 8, 15, 22, 29
+    assert_equal BigDecimal("50"), plan.next_payment_amount
   end
 
   private

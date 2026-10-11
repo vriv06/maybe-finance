@@ -4,6 +4,17 @@ class RecurringTransaction < ApplicationRecord
   MAX_INSTALLMENTS = 48
   MAX_CHARGE_PAYMENTS = 600
 
+  # How far apart payments are, keyed by the stored value; the UI labels live in RecurringTransactionsHelper
+  FREQUENCIES = {
+    "daily" => 1.day,
+    "weekly" => 1.week,
+    "monthly" => 1.month,
+    "bimonthly" => 2.months,
+    "quarterly" => 3.months,
+    "semiannual" => 6.months,
+    "annual" => 1.year
+  }.freeze
+
   INELIGIBILITY_MESSAGES = {
     transfer: "Transfers can't repeat.",
     already_linked: "This is already part of a recurring payment.",
@@ -32,6 +43,7 @@ class RecurringTransaction < ApplicationRecord
   validates :name, :currency, presence: true
   validates :start_date, presence: { message: "Choose a date for the first payment." }
   validates :plan_type, inclusion: { in: PLAN_TYPES }
+  validates :frequency, inclusion: { in: FREQUENCIES.keys, message: "Choose how often it repeats." }
   validates :status, inclusion: { in: STATUSES }
   validates :amount, numericality: { greater_than: 0 }
   validate :total_payments_in_range
@@ -115,8 +127,10 @@ class RecurringTransaction < ApplicationRecord
     plan_type == "charge"
   end
 
+  # Advances from the first payment, so month-based frequencies clamp without drifting
+  # (monthly from Jan 31: Feb 28, then Mar 31)
   def occurrence_date(number)
-    start_date.advance(months: number - 1)
+    start_date + FREQUENCIES.fetch(frequency) * (number - 1)
   end
 
   # Installment plans store the total; each payment is floored to cents and the last absorbs the remainder
@@ -154,11 +168,23 @@ class RecurringTransaction < ApplicationRecord
     amount - (1..last_handled_number).sum(BigDecimal("0")) { |number| occurrence_amount(number) }
   end
 
-  # What one month of this plan costs: the next installment, or the charge amount
+  # What one budget month of this plan costs: every payment in the month of the next one
+  # (a single payment for monthly and longer frequencies)
   def monthly_amount
-    next_number = last_handled_number + 1
-    next_number = total_payments if total_payments && next_number > total_payments
-    occurrence_amount(next_number)
+    anchor = next_payment_number
+    month_start, month_end = family.cycle_range_containing(occurrence_date(anchor))
+
+    first = anchor
+    first -= 1 while first > 1 && occurrence_date(first - 1) >= month_start
+    last = anchor
+    last += 1 while (total_payments.nil? || last < total_payments) && occurrence_date(last + 1) <= month_end
+
+    (first..last).sum(BigDecimal("0")) { |number| occurrence_amount(number) }
+  end
+
+  # The next payment's amount (the last one's once every payment is handled)
+  def next_payment_amount
+    occurrence_amount(next_payment_number)
   end
 
   def next_payment_date
@@ -208,6 +234,10 @@ class RecurringTransaction < ApplicationRecord
   end
 
   private
+    def next_payment_number
+      [ last_handled_number + 1, total_payments ].compact.min
+    end
+
     def total_payments_in_range
       raw = total_payments_before_type_cast.to_s.strip
       whole = raw.match?(/\A\d+\z/) ? raw.to_i : nil
@@ -262,7 +292,7 @@ class RecurringTransaction < ApplicationRecord
     # D12: the schedule is fixed once created, so last_generated_on never needs a reset
     def schedule_unchanged
       changed_schedule = will_save_change_to_start_date? || will_save_change_to_total_payments? ||
-                         will_save_change_to_plan_type? || (installments? && will_save_change_to_amount?)
+                         will_save_change_to_frequency? || will_save_change_to_plan_type? || (installments? && will_save_change_to_amount?)
       errors.add(:base, "The schedule can't be changed. Stop this plan and add a new one.") if changed_schedule
     end
 

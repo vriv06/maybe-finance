@@ -58,4 +58,11 @@ class Account::RecurringCommitmentsTest < ActiveSupport::TestCase
     assert_equal Date.new(2027, 3, 15), commitments.last_installment_date
     assert_empty commitments.upcoming.items
   end
+
+  test "committed per month counts every payment a weekly plan makes in a month" do
+    @family.recurring_transactions.create!(account: @card, name: "Cleaner", plan_type: "charge", frequency: "weekly",
+                                           amount: 50, currency: "USD", start_date: Date.new(2026, 10, 1))
+
+    assert_equal BigDecimal("1549"), @card.recurring_commitments.committed_per_month # 1,299 + 5 × 50
+  end
 end

@@ -51,10 +51,19 @@ class Family::RecurringCommitmentsTest < ActiveSupport::TestCase
     assert_empty commitments.items
   end
 
+  test "a weekly charge commits every payment in a budget month" do
+    create_charge(name: "Cleaner", amount: 50, start_date: Date.new(2026, 10, 1), frequency: "weekly")
+
+    november = Budget.for_cycle(@family, Date.new(2026, 11, 1))
+
+    assert_equal BigDecimal("200"), november.committed_spending # Nov 5, 12, 19, 26
+  end
+
   private
-    def create_charge(name:, amount:, start_date:, category: nil)
+    def create_charge(name:, amount:, start_date:, category: nil, frequency: "monthly")
       @family.recurring_transactions.create!(
-        account: @card, name: name, plan_type: "charge", amount: amount, currency: "USD", start_date: start_date, category: category
+        account: @card, name: name, plan_type: "charge", frequency: frequency, amount: amount, currency: "USD",
+        start_date: start_date, category: category
       )
     end
 end
