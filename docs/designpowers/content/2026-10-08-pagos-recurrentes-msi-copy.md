@@ -341,8 +341,8 @@ Source: `docs/superpowers/specs/2026-10-11-repeat-and-monthly-projection-design.
 | `r.repeat_label` | Repeat | Label of the select, under Date |
 | `r.none` | None | First option, default |
 | `r.daily` / `r.weekly` / `r.monthly` | Daily / Weekly / Monthly | Options |
-| `r.bimonthly` | Every 2 months | Option (stored `bimonthly`) |
-| `r.quarterly` / `r.semiannual` / `r.annual` | Quarterly / Every 6 months / Annually | Options |
+| `r.bimonthly` | Bimonthly (every 2 months) | Option (stored `bimonthly`) |
+| `r.quarterly` / `r.semiannual` / `r.annual` | Quarterly / Biannually (every 6 months) / Annually | Options |
 | `r.ends_after_label` | Ends after | Number, optional, shown only when Repeat ≠ None; empty = no end |
 | `r.ends_after_suffix` | payments | Inside the label |
 | `r.err.payments_range` | Enter 2 to 48 payments. | End count other than 2–48 |
@@ -378,7 +378,7 @@ Card installments keep `b3.confirm_heading_installments`, `b3.confirm_point_debt
 
 | id | String | Context |
 |---|---|---|
-| `r.charge_label` | Daily charge · Weekly charge · Monthly charge · Charge every 2 months · Quarterly charge · Charge every 6 months · Annual charge | Rows, B3 status, card tab past plans; replaces `c1.charge_line_open` / `b3.status_charge` _(default for the last three)_ |
+| `r.charge_label` | Daily charge · Weekly charge · Monthly charge · Bimonthly charge · Quarterly charge · Biannual charge · Annual charge | Rows, B3 status, card tab past plans; replaces `c1.charge_line_open` / `b3.status_charge` _(default for the last three)_ |
 | `r.payment_line` | Payment {3} of {12} | Rows of installments off a card (card keeps `c1.installment_line`) |
 | `r.status_payments` | Payments · {3} of {12} | B3 status off a card. A11y "Payments, 3 of 12" |
 | `c3.subtitle_installments` | {12} payments of {$1,250.00} · every {month} · {Active} | Replaces the 2026-10-08 string |

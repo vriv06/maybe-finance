@@ -3,8 +3,8 @@ module RecurringTransactionsHelper
 
   # r.daily … r.annual (Repeat select), keyed by RecurringTransaction::FREQUENCIES
   FREQUENCY_LABELS = {
-    "daily" => "Daily", "weekly" => "Weekly", "monthly" => "Monthly", "bimonthly" => "Every 2 months",
-    "quarterly" => "Quarterly", "semiannual" => "Every 6 months", "annual" => "Annually"
+    "daily" => "Daily", "weekly" => "Weekly", "monthly" => "Monthly", "bimonthly" => "Bimonthly",
+    "quarterly" => "Quarterly", "semiannual" => "Biannually", "annual" => "Annually"
   }.freeze
 
   # r2.units: "every {unit}"
@@ -15,8 +15,8 @@ module RecurringTransactionsHelper
 
   # r.charge_label
   CHARGE_LABELS = {
-    "daily" => "Daily charge", "weekly" => "Weekly charge", "monthly" => "Monthly charge", "bimonthly" => "Charge every 2 months",
-    "quarterly" => "Quarterly charge", "semiannual" => "Charge every 6 months", "annual" => "Annual charge"
+    "daily" => "Daily charge", "weekly" => "Weekly charge", "monthly" => "Monthly charge", "bimonthly" => "Bimonthly charge",
+    "quarterly" => "Quarterly charge", "semiannual" => "Biannual charge", "annual" => "Annual charge"
   }.freeze
 
   # Repeat select options: None first, then each frequency

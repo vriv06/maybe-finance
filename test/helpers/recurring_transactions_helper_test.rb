@@ -54,9 +54,9 @@ class RecurringTransactionsHelperTest < ActionView::TestCase
     assert_equal "Payment 3 of 12", recurring_occurrence_label(other_installments, 3)
     assert_equal "repeat", recurring_icon(other_installments)
     assert_equal "Payment 3 of 12", recurring_occurrence_label(build(plan_type: "charge", total_payments: 12), 3)
-    assert_equal [ "Monthly charge", "Weekly charge", "Charge every 2 months", "Annual charge" ],
+    assert_equal [ "Monthly charge", "Weekly charge", "Bimonthly charge", "Annual charge" ],
                  %w[monthly weekly bimonthly annual].map { |frequency| recurring_occurrence_label(build(plan_type: "charge", total_payments: nil, frequency: frequency), 3) }
-    assert_equal [ "None", "Daily", "Weekly", "Monthly", "Every 2 months", "Quarterly", "Every 6 months", "Annually" ],
+    assert_equal [ "None", "Daily", "Weekly", "Monthly", "Bimonthly", "Quarterly", "Biannually", "Annually" ],
                  recurring_frequency_options.map(&:first)
     assert_equal [ "", "daily", "weekly", "monthly", "bimonthly", "quarterly", "semiannual", "annual" ],
                  recurring_frequency_options.map(&:last)
