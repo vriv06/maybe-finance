@@ -35,7 +35,7 @@ class Transactions::RecurrencesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes response.body, "Split $3,000.00 into 3 installments"
     assert_includes response.body, "Your card balance stays the same."
-    assert_includes response.body, "Adds 2 past installments with their original dates. Past budgets will change."
+    assert_includes response.body, "Adds 3 past installments with their original dates. Past budgets will change."
   end
 
   test "converts the purchase and refreshes the drawer" do
@@ -47,7 +47,7 @@ class Transactions::RecurrencesControllerTest < ActionDispatch::IntegrationTest
     assert_equal "text/vnd.turbo-stream.html", response.media_type
     assert_includes response.body, %(target="drawer")
     assert @entry.reload.transaction.msi_purchase?
-    assert_equal 2, @entry.transaction.recurring_transaction.transactions.where(kind: "installment").count
+    assert_equal 3, @entry.transaction.recurring_transaction.transactions.where(kind: "installment").count
   end
 
   test "explains why a transfer can't repeat" do

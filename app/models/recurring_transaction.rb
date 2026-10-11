@@ -89,7 +89,7 @@ class RecurringTransaction < ApplicationRecord
         currency: entry.currency,
         total_payments: total_payments
       )
-      plan.start_date = plan.first_payment_date_after(entry.date)
+      plan.start_date = entry.date
       plan
     end
 
@@ -147,13 +147,6 @@ class RecurringTransaction < ApplicationRecord
   # its source transaction as payment 1
   def source_is_first_payment?
     charge? || !credit_card?
-  end
-
-  # Card installments start one interval after the purchase; otherwise the purchase is payment 1
-  def first_payment_date_after(date)
-    return date if date.nil? || source_is_first_payment? || !FREQUENCIES.key?(frequency)
-
-    date + FREQUENCIES.fetch(frequency)
   end
 
   # Advances from the first payment, so month-based frequencies clamp without drifting
@@ -225,7 +218,7 @@ class RecurringTransaction < ApplicationRecord
     occurrence_date(next_number)
   end
 
-  # Occurrences that saving this plan adds with past dates (payment 1 is the source transaction unless it's a card purchase)
+  # Occurrences that saving this plan adds with past dates (payment 1 is the source transaction unless it's a card purchase, whose installment 1 is generated)
   def backfill_count(as_of: family.today)
     upcoming(through: as_of).count { |occurrence| !source_is_first_payment? || occurrence.number > 1 }
   end

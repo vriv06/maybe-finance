@@ -207,14 +207,16 @@ end
     travel_to Date.new(2026, 10, 8)
     card = accounts(:credit_card)
 
-    assert_difference [ "Entry.count", "RecurringTransaction.count" ], 1 do
-      post transactions_url, params: {
-        entry: recurring_entry_params(card, amount: 15000),
-        recurrence: { frequency: "monthly", total_payments: "12" }
-      }
+    assert_difference [ "RecurringTransaction.count" ], 1 do
+      assert_difference "Entry.count", 2 do # the purchase and installment 1, dated the purchase date
+        post transactions_url, params: {
+          entry: recurring_entry_params(card, amount: 15000),
+          recurrence: { frequency: "monthly", total_payments: "12" }
+        }
+      end
     end
 
-    entry = Entry.find_by!(name: "iPad Air")
+    entry = Entry.where(name: "iPad Air").find { |e| e.entryable.try(:msi_purchase?) }
     assert entry.transaction.msi_purchase?
     assert_equal 12, entry.transaction.recurring_transaction.total_payments
     assert_equal "Split into 12 installments.", flash[:notice]

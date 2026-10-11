@@ -106,11 +106,11 @@ class RecurringTransactionTest < ActiveSupport::TestCase
     unrelated = create_transaction(account: @credit_card, amount: 50, name: "Coffee", date: Date.current)
     purchase = create_transaction(account: @credit_card, amount: 3000, name: "Laptop", date: Date.current - 2.months - 5.days)
     plan = RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 3)
-    assert_equal 2, plan.transactions.where(kind: "installment").count
+    assert_equal 3, plan.transactions.where(kind: "installment").count
 
     Account.any_instance.expects(:sync_later).once
 
-    assert_difference -> { RecurringTransaction.count } => -1, -> { Entry.count } => -3 do
+    assert_difference -> { RecurringTransaction.count } => -1, -> { Entry.count } => -4 do
       purchase.destroy!
     end
 
@@ -122,7 +122,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
     purchase = create_transaction(account: @credit_card, amount: 3000, name: "Laptop", date: Date.current - 2.months - 5.days)
     plan = RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 3)
 
-    assert_difference -> { Entry.count } => -2 do
+    assert_difference -> { Entry.count } => -3 do
       plan.destroy!
     end
 
@@ -244,8 +244,21 @@ class RecurringTransactionTest < ActiveSupport::TestCase
 
     assert purchase.entryable.reload.msi_purchase?
     assert_equal plan, purchase.entryable.recurring_transaction
-    assert_equal purchase.date.next_month, plan.start_date
-    assert_equal 2, plan.transactions.where(kind: "installment").count
+    assert_equal purchase.date, plan.start_date
+    assert_equal 3, plan.transactions.where(kind: "installment").count
+  end
+
+  test "a monthly card purchase puts installment 1 on the purchase date" do
+    travel_to Date.new(2026, 10, 1)
+    purchase = create_transaction(account: @credit_card, amount: 3000, name: "Laptop", date: Date.new(2026, 10, 1))
+
+    plan = RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 3)
+
+    assert purchase.entryable.reload.msi_purchase?
+    assert_equal [ Date.new(2026, 10, 1) ], plan.transactions.where(kind: "installment").map { |t| t.entry.date }
+    assert_equal [ 1 ], plan.transactions.where(kind: "installment").pluck(:installment_number)
+    assert_equal Date.new(2026, 12, 1), plan.end_date
+    assert_equal Date.new(2026, 11, 1), plan.next_payment_date
   end
 
   test "create_from_entry! links a charge's original entry as the first occurrence" do
@@ -324,7 +337,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
     charge = RecurringTransaction.build_from_entry(purchase, frequency: "monthly")
     other_installments = RecurringTransaction.build_from_entry(other, frequency: "monthly", total_payments: 6)
 
-    assert_equal 3, card_installments.backfill_count  # Aug 8, Sep 8, Oct 8
+    assert_equal 4, card_installments.backfill_count  # Jul 8 (installment 1), Aug 8, Sep 8, Oct 8
     assert_equal 3, charge.backfill_count             # Jul 8 is the purchase itself
     assert_equal 3, other_installments.backfill_count # Jul 8 is payment 1
   end
@@ -413,7 +426,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
     assert charge.charge?
     assert_equal Date.new(2026, 10, 8), charge.start_date
     assert card_installments.installments?
-    assert_equal Date.new(2026, 10, 15), card_installments.start_date # one interval after the purchase
+    assert_equal Date.new(2026, 10, 8), card_installments.start_date # the first installment is on the purchase date
   end
 
   test "end counts must be 2 to 48 on any account" do

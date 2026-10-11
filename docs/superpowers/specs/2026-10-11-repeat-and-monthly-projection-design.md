@@ -44,10 +44,10 @@ When Repeat ≠ None, show **"Ends after [ ] payments"**. It is optional, accept
 
 **First payment:**
 - Recurring: the transaction itself is payment 1, on the transaction date.
-- Installments: payment 1 falls one interval after the transaction date (monthly → +1 month, weekly → +1 week, and so on). There is no separate First payment field.
+- Installments: payment 1 falls on the transaction date for every account type, so it counts in the purchase month's expenses; payment N falls (N−1) intervals later (monthly → +1 month, weekly → +1 week, and so on). There is no separate First payment field.
 
 **Installments by account type:**
-- **Credit card (manual, active):** keep the MSI accounting unchanged. The entry becomes `msi_purchase` (adds the full debt, excluded from spending), and N `installment` rows count as spending without moving the balance.
+- **Credit card (manual, active):** keep the MSI accounting unchanged. The entry becomes `msi_purchase` (adds the full debt, excluded from spending), and N `installment` rows count as spending without moving the balance. Installment #1 is dated the purchase date and is generated immediately on creation; the last one is the purchase date + (N−1) intervals.
 - **Any other manual, active account:**
   - The captured entry becomes **payment 1**: its amount is rewritten to the first occurrence amount (T/N), it stays kind `standard`, and it is linked with `installment_number: 1`.
   - The remaining N−1 payments are generated as `standard` rows (ordinary spending that moves the balance).
@@ -108,7 +108,7 @@ Replaces the budget-impact block in capture.
 - `create_from_entry!` / `build_from_entry`:
   - accept `frequency` and `total_payments`, and ignore any client `plan_type`;
   - credit card vs other account as described in §1;
-  - installments `start_date` = entry date + 1 interval on a credit card (the purchase stays whole); on other accounts the entry date (the purchase is payment 1);
+  - installments `start_date` = entry date on every account (on a credit card the purchase stays whole and installment 1 is generated on that date; on other accounts the purchase is payment 1);
   - charge `start_date` = entry date.
 - Remove the installments-require-credit-card validation and the `:installments_credit_only` error. Eligibility rules otherwise unchanged: transfer, linked, not standard, income, manual account, foreign currency.
 - `upcoming(through:)`, `generate_due!`, `remaining_*` and `end_date` all work through `occurrence_date`, so they become frequency-aware automatically. `Family::RecurringCommitments` and the budget calculations need no change beyond that.

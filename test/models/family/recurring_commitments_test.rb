@@ -12,13 +12,13 @@ class Family::RecurringCommitmentsTest < ActiveSupport::TestCase
 
   test "counts generated rows and upcoming occurrences in the range, never the purchase" do
     purchase = create_transaction(account: @card, amount: 3000, name: "Laptop", date: Date.new(2026, 8, 20))
-    RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 3) # Sep 20 generated, Oct 20 upcoming
+    RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 3) # Aug 20 and Sep 20 generated, Oct 20 upcoming
 
     commitments = @family.recurring_commitments(start_date: Date.new(2026, 8, 1), end_date: Date.new(2026, 10, 31))
 
-    assert_equal [ 1, 2 ], commitments.items.map(&:number)
-    assert_equal [ true, false ], commitments.items.map(&:generated?)
-    assert_equal BigDecimal("2000"), commitments.total
+    assert_equal [ 1, 2, 3 ], commitments.items.map(&:number)
+    assert_equal [ true, true, false ], commitments.items.map(&:generated?)
+    assert_equal BigDecimal("3000"), commitments.total
   end
 
   test "rolls subcategory commitments into the parent and keeps uncategorized apart" do

@@ -10,7 +10,7 @@ class Account::RecurringCommitmentsTest < ActiveSupport::TestCase
     @card = accounts(:credit_card)
     @card.entries.delete_all
     purchase = create_transaction(account: @card, amount: 6000, name: "Sofa", date: Date.new(2026, 9, 15))
-    @sofa = RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 6) # Oct 15 .. Mar 15
+    @sofa = RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 6) # Sep 15 (generated) .. Feb 15
     @netflix = @family.recurring_transactions.create!(account: @card, name: "Netflix", plan_type: "charge",
                                                       amount: 299, currency: "USD", start_date: Date.new(2026, 10, 12))
   end
@@ -19,8 +19,8 @@ class Account::RecurringCommitmentsTest < ActiveSupport::TestCase
     commitments = @card.recurring_commitments
 
     assert_equal BigDecimal("1299"), commitments.committed_per_month
-    assert_equal BigDecimal("6000"), commitments.left_on_installments
-    assert_equal Date.new(2027, 3, 15), commitments.last_installment_date
+    assert_equal BigDecimal("5000"), commitments.left_on_installments
+    assert_equal Date.new(2027, 2, 15), commitments.last_installment_date
     assert_equal Date.new(2026, 10, 12), @netflix.next_payment_date
     assert_equal "jan-2027", commitments.later_months_budget_param
   end
@@ -54,8 +54,8 @@ class Account::RecurringCommitmentsTest < ActiveSupport::TestCase
     commitments = @card.recurring_commitments
 
     assert_equal BigDecimal("1299"), commitments.committed_per_month
-    assert_equal BigDecimal("6000"), commitments.left_on_installments
-    assert_equal Date.new(2027, 3, 15), commitments.last_installment_date
+    assert_equal BigDecimal("5000"), commitments.left_on_installments
+    assert_equal Date.new(2027, 2, 15), commitments.last_installment_date
     assert_empty commitments.upcoming.items
   end
 

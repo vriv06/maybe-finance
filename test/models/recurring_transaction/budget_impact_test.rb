@@ -21,8 +21,8 @@ class RecurringTransaction::BudgetImpactTest < ActiveSupport::TestCase
     purchase = create_transaction(account: @card, amount: 3000, name: "iPad", date: Date.new(2026, 10, 8))
     impact = RecurringTransaction.build_from_entry(purchase, frequency: "monthly", total_payments: 6).budget_impact
 
-    assert_equal [ "November 2026", "December 2026", "January 2027" ], impact.months.map { |m| m.budget.name }
-    assert impact.months.all?(&:reference?)
+    assert_equal [ "October 2026", "November 2026", "December 2026" ], impact.months.map { |m| m.budget.name }
+    assert_equal [ false, true, true ], impact.months.map(&:reference?) # October has its own budget
     assert_equal [ BigDecimal("1500") ] * 3, impact.months.map(&:total)
     assert_equal [ 100 ] * 3, impact.months.map(&:percent)
     assert_empty impact.over_months

@@ -19,7 +19,7 @@ class RecurringTransactionsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_includes response.body, "12 payments of $1,250.00"
-    assert_includes response.body, "Last on Oct 8, 2027"
+    assert_includes response.body, "Last on Sep 8, 2027"
   end
 
   test "preview stays empty while data is missing" do
@@ -79,12 +79,12 @@ class RecurringTransactionsControllerTest < ActionDispatch::IntegrationTest
       recurrence: { frequency: "monthly", total_payments: "3" }
     }, headers: @frame
 
-    assert_includes response.body, "This puts 3 budgets over. The first is November 2026."
+    assert_includes response.body, "This puts 3 budgets over. The first is October 2026."
     assert_not_includes response.body, "Budget impact of the next"
     assert_not_includes response.body, "Months without a budget use"
     [ "Monthly expenses", "Recurring expenses", "This expense" ].each { |label| assert_includes response.body, label }
     assert_not_includes response.body, "This purchase"
-    assert_includes response.body, "November 2026: "
+    assert_includes response.body, "October 2026: "
     assert_select "details:not([open]) summary", text: /Monthly projection/
     # Same segmented bar as the budget's: every segment, including the last filled one, is rounded
     assert_select "[data-recurring-form-projection] div.flex.h-1\\.5.gap-1", 3
