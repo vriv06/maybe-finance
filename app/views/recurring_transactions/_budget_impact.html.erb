@@ -1,7 +1,7 @@
 <%# locals: (impact:, title:) %>
 
 <% over_text = "text-red-700 theme-dark:text-red-400" %>
-<% count = impact.installments_count %>
+<% count = impact.payments_count %>
 <% subtitle = count == 1 ? "Budget impact of the next installment" : "Budget impact of the next #{count} installments" %>
 
 <section aria-labelledby="recurring-impact-title" class="rounded-lg border border-tertiary p-3 flex flex-col gap-3">
