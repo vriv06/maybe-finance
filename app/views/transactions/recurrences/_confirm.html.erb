@@ -2,7 +2,8 @@
 
 <% total = recurring_money(entry.amount.abs, entry.currency) %>
 <% backfill = recurrence.backfill_count %>
-<% noun = recurrence.installments? ? "installment" : "payment" %>
+<% card_installments = recurrence.installments? && recurrence.credit_card? %>
+<% backfill_noun = card_installments ? "installment" : "payment" %>
 
 <div class="p-3">
   <h4 class="text-sm text-primary">Recurring payment</h4>
@@ -14,33 +15,32 @@
       </div>
     <% end %>
 
-    <%= hidden_field_tag "recurrence[plan_type]", recurrence.plan_type, id: nil %>
+    <%= hidden_field_tag "recurrence[frequency]", recurrence.frequency, id: nil %>
     <%= hidden_field_tag "recurrence[total_payments]", recurrence.total_payments, id: nil %>
-    <% if recurrence.installments? && recurrence.start_date %>
-      <%= hidden_field_tag "recurrence[start_date]", recurrence.start_date.iso8601, id: nil %>
-    <% end %>
 
     <h4 tabindex="-1" autofocus class="text-sm font-medium text-primary tabular-nums rounded outline-none focus-visible:ring-4 focus-visible:ring-alpha-black-200">
       <% if recurrence.installments? %>
-        Split <%= total %> into <%= recurrence.total_payments %> installments
+        Split <%= total %> into <%= recurrence.total_payments %> <%= recurring_payments_noun(recurrence) %>
       <% else %>
-        Repeat <%= total %> every month
+        Repeat <%= total %> <%= recurring_every(recurrence) %>
       <% end %>
     </h4>
 
     <ul class="list-disc pl-5 space-y-1 text-sm text-secondary tabular-nums">
-      <% if recurrence.installments? %>
+      <% if card_installments %>
         <li>Your card balance stays the same.</li>
+      <% elsif recurrence.installments? %>
+        <li>This transaction becomes payment 1 (<%= recurring_money(recurrence.occurrence_amount(1), recurrence.currency) %>).</li>
       <% end %>
       <% if backfill.positive? %>
-        <li>Adds <%= backfill %> past <%= noun.pluralize(backfill) %> with their original dates. Past budgets will change.</li>
+        <li>Adds <%= backfill %> past <%= backfill_noun.pluralize(backfill) %> with their original dates. Past budgets will change.</li>
       <% end %>
     </ul>
 
     <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
       <%= render DS::Link.new(text: "Cancel", variant: "outline", href: transaction_recurrence_path(entry)) %>
       <%= render DS::Button.new(
-        text: recurrence.installments? ? "Split into #{recurrence.total_payments} installments" : "Start monthly charge",
+        text: recurrence.installments? ? "Split into #{recurrence.total_payments} #{recurring_payments_noun(recurrence)}" : "Start #{recurring_charge_label(recurrence).downcase_first}",
         type: "submit"
       ) %>
     </div>

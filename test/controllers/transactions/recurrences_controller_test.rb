@@ -137,4 +137,94 @@ class Transactions::RecurrencesControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Installments"
     assert_includes response.body, recurring_transaction_path(plan)
   end
+
+  test "the fields carry one live status region outside the preview frame" do
+    get new_transaction_recurrence_url(@entry), headers: @frame
+
+    assert_select "p.sr-only[role=status][aria-live=polite][aria-atomic=true][data-recurring-form-target=status]", count: 1
+    assert_select "turbo-frame#recurring_preview p[role=status]", count: 0
+  end
+
+  test "a 422 on the fields keeps the chosen frequency and payments" do
+    get new_transaction_recurrence_url(@entry), params: { recurrence: { frequency: "weekly", total_payments: "60" } }, headers: @frame
+
+    assert_response :unprocessable_entity
+    assert_select "select#recurrence_frequency option[selected][value=weekly]"
+    assert_select "input#recurrence_total_payments[value='60']"
+  end
+
+  test "review of a weekly charge names its frequency" do
+    get new_transaction_recurrence_url(@entry), params: { recurrence: { frequency: "weekly" } }, headers: @frame
+
+    assert_response :success
+    assert_includes response.body, "Repeat $3,000.00 every week"
+    assert_includes response.body, "Start weekly charge"
+    assert_select "input[type=hidden][name='recurrence[frequency]'][value='weekly']"
+  end
+
+  test "review of installments off a card says the transaction becomes payment 1" do
+    entry = create_transaction(account: accounts(:depository), amount: 1200, name: "Desk", date: Date.new(2026, 10, 1))
+    frame = { "Turbo-Frame" => dom_id(entry, :recurrence) }
+
+    get new_transaction_recurrence_url(entry), params: { recurrence: { frequency: "monthly", total_payments: "3" } }, headers: frame
+
+    assert_response :success
+    assert_includes response.body, "Split $1,200.00 into 3 payments"
+    assert_includes response.body, "This transaction becomes payment 1 ($400.00)."
+    assert_includes response.body, "Split into 3 payments"
+    assert_not_includes response.body, "Your card balance stays the same."
+  end
+
+  test "converting installments off a card rewrites the transaction as payment 1" do
+    entry = create_transaction(account: accounts(:depository), amount: 1200, name: "Desk", date: Date.new(2026, 10, 1))
+
+    post transaction_recurrence_url(entry), params: { recurrence: { frequency: "monthly", total_payments: "3" } },
+         headers: { "Accept" => "text/vnd.turbo-stream.html" }
+
+    assert_equal "text/vnd.turbo-stream.html", response.media_type
+    assert_equal BigDecimal("400"), entry.reload.amount
+    assert_includes response.body, "Split into 3 payments."
+  end
+
+  # fields -> review -> confirm: the confirm step's own hidden fields must create the plan
+  def confirm_and_post(entry, params)
+    frame = { "Turbo-Frame" => dom_id(entry, :recurrence) }
+    get new_transaction_recurrence_url(entry), params: { recurrence: params }, headers: frame
+    assert_response :success
+
+    document = Nokogiri::HTML(response.body)
+    posted = document.css("form input[type=hidden]").to_h { |input| [ input["name"], input["value"] ] }
+    assert_equal params[:frequency], posted["recurrence[frequency]"]
+    assert_nil posted["recurrence[plan_type]"]
+    assert_nil posted["recurrence[start_date]"]
+
+    assert_difference "RecurringTransaction.count", 1 do
+      post transaction_recurrence_url(entry), params: { recurrence: posted.transform_keys { |k| k[/\[(.+)\]/, 1] }.compact_blank },
+           headers: { "Accept" => "text/vnd.turbo-stream.html" }
+    end
+    assert_response :success
+    entry.reload.transaction.recurring_transaction
+  end
+
+  test "confirm posts create card installments end to end" do
+    plan = confirm_and_post(@entry, @installments)
+
+    assert plan.installments?
+    assert_equal 3, plan.total_payments
+  end
+
+  test "confirm posts create non-card installments end to end" do
+    entry = create_transaction(account: accounts(:depository), amount: 1200, name: "Desk", date: Date.new(2026, 10, 1))
+    plan = confirm_and_post(entry, @installments)
+
+    assert plan.installments?
+    assert_equal BigDecimal("400"), entry.reload.amount
+  end
+
+  test "confirm posts create a weekly charge end to end" do
+    plan = confirm_and_post(@entry, { frequency: "weekly" })
+
+    assert plan.charge?
+    assert_equal "weekly", plan.frequency
+  end
 end
