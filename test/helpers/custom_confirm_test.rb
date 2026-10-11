@@ -53,4 +53,11 @@ class CustomConfirmTest < ActiveSupport::TestCase
   test "existing confirms have no secondary button" do
     assert_not CustomConfirm.for_resource_deletion("transaction").to_data_attribute.key?(:cancelText)
   end
+
+  test "stopping installments off a card says the payments left won't be added" do
+    purchase = create_transaction(account: accounts(:depository), amount: 1200, name: "Desk", date: Date.new(2026, 7, 20))
+    plan = RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 12) # Jul 20 (the purchase), Aug 20, Sep 20
+
+    assert_equal "The 9 payments left ($900.00) won't be added.", CustomConfirm.for_plan_stop(plan).to_data_attribute[:body]
+  end
 end

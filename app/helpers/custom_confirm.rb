@@ -13,10 +13,13 @@ class CustomConfirm
     end
 
     def for_plan_stop(plan)
-      body = if plan.installments?
+      body = if plan.installments? && plan.credit_card?
         left = plan.remaining_payments
         "The #{left} #{"installment".pluralize(left)} left (#{money(plan.remaining_balance, plan.currency)}) " \
           "won't count in future budgets. The full purchase stays on your card balance."
+      elsif plan.installments?
+        left = plan.remaining_payments
+        "The #{left} #{"payment".pluralize(left)} left (#{money(plan.remaining_balance, plan.currency)}) won't be added."
       else
         added = plan.last_handled_number
         "No new payments will be added. The #{added} already added #{added == 1 ? "stays" : "stay"}."

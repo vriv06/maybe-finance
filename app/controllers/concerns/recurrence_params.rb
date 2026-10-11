@@ -19,7 +19,12 @@ module RecurrenceParams
       { frequency: recurrence_params[:frequency].to_s, total_payments: recurrence_params[:total_payments].presence }
     end
 
+    # b3.success_installments / r3.success_payments / r3.success_charge
     def recurrence_notice(plan)
-      plan.installments? ? "Split into #{plan.total_payments} installments." : "Monthly charge started."
+      if plan.installments?
+        "Split into #{plan.total_payments} #{helpers.recurring_payments_noun(plan)}."
+      else
+        "#{helpers.recurring_charge_label(plan)} started."
+      end
     end
 end

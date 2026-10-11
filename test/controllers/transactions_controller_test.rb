@@ -340,6 +340,7 @@ end
     assert_equal BigDecimal("400"), entry.amount
     assert_equal 1, entry.transaction.installment_number
     assert_equal BigDecimal("1200"), entry.transaction.recurring_transaction.amount
+    assert_equal "Split into 3 payments.", flash[:notice]
   end
 
   test "a client plan type is ignored: no end count means a recurring charge" do
@@ -354,6 +355,7 @@ end
     assert plan.charge?
     assert_equal "weekly", plan.frequency
     assert_equal Date.new(2026, 10, 8), plan.start_date
+    assert_equal "Weekly charge started.", flash[:notice]
   end
 
   test "an unknown frequency is refused, not a 500" do

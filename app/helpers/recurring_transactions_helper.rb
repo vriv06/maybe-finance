@@ -1,6 +1,43 @@
 module RecurringTransactionsHelper
   RecurringSummary = Data.define(:icon, :line1, :line2, :past_due, :announcement)
 
+  # r.daily … r.annual (Repeat select), keyed by RecurringTransaction::FREQUENCIES
+  FREQUENCY_LABELS = {
+    "daily" => "Daily", "weekly" => "Weekly", "monthly" => "Monthly", "bimonthly" => "Every 2 months",
+    "quarterly" => "Quarterly", "semiannual" => "Every 6 months", "annual" => "Annually"
+  }.freeze
+
+  # r2.units: "every {unit}"
+  FREQUENCY_UNITS = {
+    "daily" => "day", "weekly" => "week", "monthly" => "month", "bimonthly" => "2 months",
+    "quarterly" => "3 months", "semiannual" => "6 months", "annual" => "year"
+  }.freeze
+
+  # r.charge_label
+  CHARGE_LABELS = {
+    "daily" => "Daily charge", "weekly" => "Weekly charge", "monthly" => "Monthly charge", "bimonthly" => "Charge every 2 months",
+    "quarterly" => "Quarterly charge", "semiannual" => "Charge every 6 months", "annual" => "Annual charge"
+  }.freeze
+
+  # Repeat select options: None first, then each frequency
+  def recurring_frequency_options
+    [ [ "None", "" ], *FREQUENCY_LABELS.map { |value, label| [ label, value ] } ]
+  end
+
+  def recurring_every(plan)
+    "every #{FREQUENCY_UNITS.fetch(plan.frequency)}"
+  end
+
+  def recurring_charge_label(plan)
+    CHARGE_LABELS.fetch(plan.frequency)
+  end
+
+  # Installment plans: "installments" on a card (the purchase stays whole on it), "payments" elsewhere
+  def recurring_payments_noun(plan, count = 2)
+    noun = plan.credit_card? ? "installment" : "payment"
+    count == 1 ? noun : noun.pluralize
+  end
+
   # "Mar 27, 2027"; with short: true, "Oct 27" in the current year
   def recurring_date(date, short: false)
     return date.strftime("%b %-d") if short && date.year == Date.current.year
@@ -13,7 +50,7 @@ module RecurringTransactionsHelper
   end
 
   def recurring_icon(plan)
-    plan.installments? ? "credit-card" : "repeat"
+    plan.installments? && plan.credit_card? ? "credit-card" : "repeat"
   end
 
   # B2 summary: figures on line 1, dates on line 2 (copy b2.*); the announcement uses commas instead of "·"
@@ -21,7 +58,7 @@ module RecurringTransactionsHelper
     first_amount = recurring_money(plan.occurrence_amount(1), plan.currency)
 
     if plan.installments?
-      line1 = "#{plan.total_payments} installments of #{first_amount}"
+      line1 = "#{plan.total_payments} payments of #{first_amount}"
       last_amount = plan.occurrence_amount(plan.total_payments)
       last_date = recurring_date(plan.end_date)
 
@@ -34,7 +71,7 @@ module RecurringTransactionsHelper
         spoken = "#{line1}, last one #{last_money} on #{last_date}"
       end
     else
-      line1 = "#{first_amount} every month"
+      line1 = "#{first_amount} #{recurring_every(plan)}"
 
       if plan.total_payments
         payments = pluralize(plan.total_payments, "payment")
@@ -59,14 +96,14 @@ module RecurringTransactionsHelper
     )
   end
 
-  # c1.installment_line / c1.charge_line_end / c1.charge_line_open
+  # c1.installment_line (card installments) / r.payment_line (other installments, charges with an end) / r.charge_label
   def recurring_occurrence_label(plan, number)
-    if plan.installments?
+    if plan.installments? && plan.credit_card?
       "Installment #{number} of #{plan.total_payments}"
     elsif plan.total_payments
       "Payment #{number} of #{plan.total_payments}"
     else
-      "Monthly charge"
+      recurring_charge_label(plan)
     end
   end
 
@@ -78,14 +115,15 @@ module RecurringTransactionsHelper
     recurring_occurrence_label(plan, transaction.installment_number)
   end
 
-  # b3.status_* under "Recurring payment" in the drawer
+  # b3.status_* / r.status_payments under "Recurring payment" in the drawer
   def recurring_status_text(transaction)
     plan = transaction.recurring_transaction
     return "One time" unless plan
-    return "Monthly charge" if plan.charge?
+    return recurring_charge_label(plan) if plan.charge?
 
-    number = transaction.installment? ? transaction.installment_number : plan.last_handled_number
-    safe_join([ "Installments", tag.span("·", aria: { hidden: true }), tag.span(",", class: "sr-only"), "#{number} of #{plan.total_payments}" ], " ")
+    number = transaction.installment_number || plan.last_handled_number
+    label = plan.credit_card? ? "Installments" : "Payments"
+    safe_join([ label, tag.span("·", aria: { hidden: true }), tag.span(",", class: "sr-only"), "#{number} of #{plan.total_payments}" ], " ")
   end
 
   # [icon, text] for a plan's state: Active / Stopped {date} / Paid off {date} / Ended {date}
@@ -141,9 +179,9 @@ module RecurringTransactionsHelper
     state = state_icon ? safe_join([ icon(state_icon, size: "xs", color: "current"), state_text ]) : state_text
 
     if plan.installments?
-      [ "#{plan.total_payments} installments of #{recurring_money(plan.occurrence_amount(1), plan.currency)}", state ]
+      [ "#{plan.total_payments} payments of #{recurring_money(plan.occurrence_amount(1), plan.currency)}", recurring_every(plan), state ]
     else
-      [ "Monthly charge", recurring_money(plan.amount, plan.currency), state ]
+      [ "#{recurring_money(plan.amount, plan.currency)} #{recurring_every(plan)}", state ]
     end
   end
 end

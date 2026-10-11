@@ -18,7 +18,7 @@ class RecurringTransactionsControllerTest < ActionDispatch::IntegrationTest
     }, headers: @frame
 
     assert_response :success
-    assert_includes response.body, "12 installments of $1,250.00"
+    assert_includes response.body, "12 payments of $1,250.00"
     assert_includes response.body, "Last on Oct 8, 2027"
   end
 
@@ -98,7 +98,7 @@ class RecurringTransactionsControllerTest < ActionDispatch::IntegrationTest
       }, headers: @frame
       assert_response :success
       assert_includes response.body, %(<turbo-frame id="recurring_preview">)
-      assert_not_includes response.body, "installments of"
+      assert_not_includes response.body, "payments of"
     end
   end
 

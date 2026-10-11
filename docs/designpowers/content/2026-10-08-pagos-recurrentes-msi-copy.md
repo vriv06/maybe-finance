@@ -329,3 +329,80 @@ Los builders no deben buscar estos ids: **no existen**. Donde una superficie los
 | `bi.*` | **Nuevos**: impacto en presupuesto al capturar | Victor canvas edit (vía orchestrator); `bi.title_over_multi` y `bi.reference` propuestos por design-lead |
 
 Riesgo de vocabulario: `b3.status_one_time` ("One time") convive con el toggle existente "One-time Expense" (kind `one_time`, que excluye de promedios). Son cosas distintas con casi el mismo nombre; content-writer debería confirmar si conviene "Doesn't repeat" (el mismo string del radio) como estado.
+
+## 14. Repeat + Monthly projection (Victor, 2026-10-11)
+
+Source: `docs/superpowers/specs/2026-10-11-repeat-and-monthly-projection-design.md`. Ids marked _(default)_ were chosen at plan time and need content-writer review.
+
+### 14.1 Capture (B1 / B3 fields)
+
+| id | String | Context |
+|---|---|---|
+| `r.repeat_label` | Repeat | Label of the select, under Date |
+| `r.none` | None | First option, default |
+| `r.daily` / `r.weekly` / `r.monthly` | Daily / Weekly / Monthly | Options |
+| `r.bimonthly` | Every 2 months | Option (stored `bimonthly`) |
+| `r.quarterly` / `r.semiannual` / `r.annual` | Quarterly / Every 6 months / Annually | Options |
+| `r.ends_after_label` | Ends after | Number, optional, shown only when Repeat ≠ None; empty = no end |
+| `r.ends_after_suffix` | payments | Inside the label |
+| `r.err.payments_range` | Enter 2 to 48 payments. | End count other than 2–48 |
+| `r.err.frequency` | Choose how often it repeats. | Unknown frequency (tampered) _(default)_ |
+| `r.err.amount_too_small` | Too small to split into {6} payments. Use fewer. | Payment < 0.01 _(default: "installments" → "payments")_ |
+
+`b.err.payments_range_charge` ("Enter a whole number, or leave it empty.") stays for charges stored with an end before 2026-10-11.
+
+### 14.2 Live summary (B2)
+
+| id | String | Context |
+|---|---|---|
+| `r2.line1_installments` | {12} payments of {$1,250.00} | Line 1 with an end; the amount entered is the total. Line 2 is `b2.line2_last_on` / `b2.line2_last_one` |
+| `r2.line1_charge` | {$600.00} every {unit} | Line 1 without an end; line 2 `b2.line2_no_end` |
+| `r2.units` | day · week · month · 2 months · 3 months · 6 months · year | `{unit}` |
+
+### 14.3 Convert (B3)
+
+Card installments keep `b3.confirm_heading_installments`, `b3.confirm_point_debt`, `b3.confirm_primary_installments`, `b3.success_installments`.
+
+| id | String | Context |
+|---|---|---|
+| `r3.confirm_heading_payments` | Split {$3,000.00} into {3} payments | Installments off a card |
+| `r3.confirm_point_first_payment` | This transaction becomes payment 1 ({$1,000.00}). | Installments off a card: its amount changes _(default)_ |
+| `r3.confirm_primary_payments` | Split into {3} payments | |
+| `r3.success_payments` | Split into {3} payments. | Notice (also after New transaction) |
+| `r3.confirm_heading_charge` | Repeat {$199.00} every {unit} | Replaces `b3.confirm_heading_charge` |
+| `r3.confirm_primary_charge` | Start {weekly charge} | `r.charge_label`, first letter lowercased; replaces `b3.confirm_primary_charge` |
+| `r3.success_charge` | {Weekly charge} started. | Replaces `b3.success_charge` |
+| `b3.confirm_point_backfill` | Adds {3} past {installments/payments} … | "installments" only for card installments |
+
+### 14.4 Labels on other surfaces
+
+| id | String | Context |
+|---|---|---|
+| `r.charge_label` | Daily charge · Weekly charge · Monthly charge · Charge every 2 months · Quarterly charge · Charge every 6 months · Annual charge | Rows, B3 status, card tab past plans; replaces `c1.charge_line_open` / `b3.status_charge` _(default for the last three)_ |
+| `r.payment_line` | Payment {3} of {12} | Rows of installments off a card (card keeps `c1.installment_line`) |
+| `r.status_payments` | Payments · {3} of {12} | B3 status off a card. A11y "Payments, 3 of 12" |
+| `c3.subtitle_installments` | {12} payments of {$1,250.00} · every {month} · {Active} | Replaces the 2026-10-08 string |
+| `c3.subtitle_charge` | {$600.00} every {week} · {Active} | Replaces the 2026-10-08 string |
+| `c3.schedule_locked_payments` | To change payments or dates, stop this plan and add a new one. | Plan dialog, installments off a card _(default)_ |
+| `r.confirm_stop_body_payments` | The {9} payments left ({$900.00}) won't be added. | Stop confirm, installments off a card _(default)_ |
+| `c2.col_payment` | Payment | Replaces "Per month" in both card tables _(default)_ |
+| `c2.every_line` | every {week} | Second line under the payment amount |
+| `c2.charges_caption` | Charges | Replaces "Monthly charges" _(default)_ |
+
+### 14.5 Monthly projection (replaces the BI header and legend)
+
+| id | String | Context | A11y |
+|---|---|---|---|
+| `pm.title` | Monthly projection | `DS::Disclosure`, closed by default, only when Repeat ≠ None | `<summary>` |
+| `bi.subtitle` | Budget impact of the next {3} payments | Singular "next payment" | |
+| `bi.subtitle_months` | Budget impact of the next {3} months | Daily and weekly plans; singular "next month" _(default)_ | |
+| `pm.legend_installments` | Expenses in installments | `bg-inverse`; replaces `bi.legend_committed` | Legend is read |
+| `pm.legend_other` | Other | Categories beyond the top 4 (Uncategorized included) | |
+| `pm.month_detail_avg` | {$7,801.00} of {$7,500.00} budgeted · categories avg | Future months (category averages) _(default)_ | `aria-hidden` |
+| `pm.month_sr` | {November 2026}: {$7,801.00} of {$7,500.00}, {$301.00} over / {$199.00} left | `sr-only` per bar | |
+
+Kept: `bi.title_over`, `bi.title_over_multi`, `bi.month_over`, `bi.month_percent`, `bi.month_detail`, `bi.legend_purchase`, `bi.legend_budget`, `bi.reference`.
+
+### 14.6 Removed (2026-10-11)
+
+`b1.disclosure_title` (capture), `b1.type_label`, `b1.type_none`, `b1.type_charge`, `b1.type_installments`, `b1.payments_label_installments`, `b1.payments_label_charge` (now `r.ends_after_label`), `b1.first_payment_label`, `b.err.installments_credit_only`, `b.err.first_payment_missing`, `b.err.first_payment_before_purchase`, `b.err.payments_range_installments` (now `r.err.payments_range`), `bi.legend_committed`, `c2.msi_col_monthly` / `c2.charges_col_amount` ("Per month").
