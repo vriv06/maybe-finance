@@ -24,6 +24,11 @@ module RecurringTransactionsHelper
     [ [ "None", "" ], *FREQUENCY_LABELS.map { |value, label| [ label, value ] } ]
   end
 
+  # Category colors are user input that ends up in a style attribute, so only hex values pass
+  def projection_color(color)
+    color.to_s.match?(/\A#(\h{3}|\h{6}|\h{8})\z/) ? color : Category::UNCATEGORIZED_COLOR
+  end
+
   def recurring_every(plan)
     "every #{FREQUENCY_UNITS.fetch(plan.frequency)}"
   end

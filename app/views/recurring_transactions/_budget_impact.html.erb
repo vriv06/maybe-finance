@@ -36,11 +36,11 @@
           <div class="flex h-2 overflow-hidden rounded-full bg-surface-inset">
             <div class="h-full bg-inverse" style="width: <%= impact.width(month.committed) %>%"></div>
             <% month.category_segments.each do |segment| %>
-              <div class="h-full" style="width: <%= impact.width(segment.amount) %>%; background-color: <%= segment.color %>"></div>
+              <div class="h-full" style="width: <%= impact.width(segment.amount) %>%; background-color: <%= projection_color(segment.color) %>"></div>
             <% end %>
             <div class="h-full bg-destructive" style="width: <%= impact.width(month.purchase) %>%"></div>
           </div>
-          <div class="absolute -top-1 h-4 w-0.5 rounded-sm bg-current text-secondary" style="left: <%= impact.width(month.basis) %>%"></div>
+          <div class="absolute -top-1 h-4 w-0.5 -translate-x-1/2 rounded-sm bg-current text-secondary" style="left: <%= impact.width(month.basis) %>%"></div>
         </div>
 
         <p class="text-xs text-secondary tabular-nums" aria-hidden="true">
@@ -53,7 +53,7 @@
   <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-secondary">
     <li class="flex items-center gap-1.5"><span class="size-2 rounded-sm bg-inverse" aria-hidden="true"></span>Expenses in installments</li>
     <% impact.category_legend.each do |label, color| %>
-      <li class="flex items-center gap-1.5"><span class="size-2 rounded-sm" style="background-color: <%= color %>" aria-hidden="true"></span><%= label %></li>
+      <li class="flex items-center gap-1.5"><span class="size-2 rounded-sm" style="background-color: <%= projection_color(color) %>" aria-hidden="true"></span><%= label %></li>
     <% end %>
     <li class="flex items-center gap-1.5"><span class="size-2 rounded-sm bg-destructive" aria-hidden="true"></span>This purchase</li>
     <li class="flex items-center gap-1.5"><span class="h-2.5 w-0.5 bg-current" aria-hidden="true"></span>Budget</li>

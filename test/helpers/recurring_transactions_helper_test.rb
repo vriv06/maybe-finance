@@ -116,6 +116,15 @@ class RecurringTransactionsHelperTest < ActionView::TestCase
     assert_equal "November 2026: $7,301.00 of $7,500.00, $199.00 left", budget_impact_month_summary(under)
   end
 
+  test "projection colors accept only hex values" do
+    assert_equal "#e99537", projection_color("#e99537")
+    assert_equal "#fff", projection_color("#fff")
+    assert_equal "#e9953780", projection_color("#e9953780")
+    assert_equal Category::UNCATEGORIZED_COLOR, projection_color("red; background-image:url(https://example.com/x)")
+    assert_equal Category::UNCATEGORIZED_COLOR, projection_color("#12")
+    assert_equal Category::UNCATEGORIZED_COLOR, projection_color(nil)
+  end
+
   private
     def build(plan_type: "installments", amount: 1000, total_payments: 3, start_date: Date.new(2026, 11, 8), frequency: "monthly", account: @card)
       RecurringTransaction.new(family: @family, account: account, name: "Plan", plan_type: plan_type, frequency: frequency,
