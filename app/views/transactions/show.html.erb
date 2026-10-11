@@ -5,7 +5,7 @@
 
   <% dialog.with_body do %>
     <% plan = @entry.transaction.recurring_transaction %>
-    <% locked = Transaction::PLAN_LOCKED_KINDS.include?(@entry.transaction.kind_in_database) %>
+    <% locked = @entry.transaction.plan_locked? %>
     <% msi_purchase = @entry.transaction.kind_in_database == "msi_purchase" %>
 
     <% if plan %>

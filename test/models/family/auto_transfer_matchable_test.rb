@@ -128,6 +128,20 @@ class Family::AutoTransferMatchableTest < ActiveSupport::TestCase
     end
   end
 
+  test "does not match payments of an installments plan off a card" do
+    purchase = create_transaction(date: Date.current, account: @depository, amount: 1500, name: "Sofa")
+    RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 3) # becomes payment 1 of $500
+    inflow = create_transaction(date: Date.current, account: @credit_card, amount: -500)
+
+    assert_no_difference -> { Transfer.count } do
+      @family.auto_match_transfers!
+    end
+
+    transfer = Transfer.new(inflow_transaction: inflow.entryable, outflow_transaction: purchase.reload.entryable)
+    assert_not transfer.valid?
+    assert_includes transfer.errors[:base], "This is part of a recurring payment, so it can't be a transfer."
+  end
+
   private
     def load_exchange_prices
       rates = {

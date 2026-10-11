@@ -472,6 +472,26 @@ class RecurringTransactionTest < ActiveSupport::TestCase
     assert_nil purchase.entryable.reload.recurring_transaction_id
   end
 
+  test "payments of installments off a card are locked like installments; charge rows are not" do
+    travel_to Date.new(2026, 10, 8)
+    purchase = create_transaction(account: accounts(:depository), amount: 900, name: "Sofa", date: Date.new(2026, 8, 20))
+    plan = RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 3)
+    payment = plan.transactions.find_by(installment_number: 2).entry
+
+    assert_equal 300, purchase.reload.amount # creation rewrote the amount before linking, with the lock in place
+    assert payment.entryable.plan_locked?
+    assert purchase.reload.entryable.plan_locked?
+    assert_not payment.update(amount: 5)
+    assert_equal [ "Set by the plan." ], payment.errors[:amount]
+    assert_not payment.reload.entryable.update(kind: "one_time")
+    assert payment.reload.update(date: Date.new(2026, 9, 21))
+
+    gym = create_transaction(account: accounts(:depository), amount: 50, name: "Gym", date: Date.new(2026, 10, 1))
+    RecurringTransaction.create_from_entry!(gym, frequency: "monthly")
+    assert_not gym.reload.entryable.plan_locked?
+    assert gym.update(amount: 60)
+  end
+
   private
     def link_installment(plan, number)
       create_transaction(

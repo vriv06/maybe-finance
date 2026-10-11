@@ -53,10 +53,20 @@ class Transaction < ApplicationRecord
     update!(category: category)
   end
 
+  # Rows the plan owns: the card purchase and its installments, and every payment of an installments
+  # plan on other accounts. Their kind and amount only change through the plan. Charge rows stay editable.
+  # Based on the persisted state, so the plan's own flow (which rewrites the amount before linking) isn't blocked.
+  def plan_locked?
+    return true if PLAN_LOCKED_KINDS.include?(kind_in_database)
+    return false if recurring_transaction_id_in_database.nil? || installment_number_in_database.nil?
+
+    RecurringTransaction.where(id: recurring_transaction_id_in_database, plan_type: "installments").exists?
+  end
+
   private
     def plan_kind_unchanged
       return if @releasing_from_plan || !will_save_change_to_kind?
-      return unless PLAN_LOCKED_KINDS.include?(kind_in_database)
+      return unless plan_locked?
 
       errors.add(:kind, "This is part of a recurring payment, so it can't be one-time.")
     end

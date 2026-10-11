@@ -131,7 +131,7 @@ class Transfer < ApplicationRecord
     end
 
     def transfer_excludes_installment_plan_transactions
-      if [ inflow_transaction, outflow_transaction ].compact.any? { |t| Transaction::PLAN_LOCKED_KINDS.include?(t.kind) }
+      if [ inflow_transaction, outflow_transaction ].compact.any?(&:plan_locked?)
         errors.add(:base, "This is part of a recurring payment, so it can't be a transfer.")
       end
     end

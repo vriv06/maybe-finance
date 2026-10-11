@@ -496,6 +496,20 @@ end
     assert_includes response.body, "Installment 1 of 3"
   end
 
+  test "the drawer of a payment off a card locks it like an installment" do
+    travel_to Date.new(2026, 10, 8)
+    purchase = create_transaction(account: accounts(:depository), amount: 900, name: "Sofa", date: Date.new(2026, 8, 20))
+    plan = RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 3)
+    payment = plan.transactions.find_by(installment_number: 2).entry
+
+    get transaction_url(payment), headers: { "Turbo-Frame" => "drawer" }
+
+    assert_response :success
+    assert_includes response.body, "Set by the plan."
+    assert_not_includes response.body, "One-time Expense"
+    assert_not_includes response.body, "Open matcher"
+  end
+
   private
     def create_installment_plan
       card = accounts(:credit_card)

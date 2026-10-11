@@ -9,7 +9,7 @@ class TransferMatchesController < ApplicationController
   LOCKED_MESSAGE = "This is part of a recurring payment, so it can't be a transfer.".freeze
 
   def create
-    if Transaction::PLAN_LOCKED_KINDS.include?(@entry.transaction.kind)
+    if @entry.transaction.plan_locked?
       return redirect_back_or_to transactions_path, alert: LOCKED_MESSAGE
     end
 

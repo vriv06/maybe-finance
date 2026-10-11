@@ -101,13 +101,14 @@ class Entry < ApplicationRecord
   end
 
   private
-    # Plan-owned rows (generated installments, the installment purchase) keep the amount the plan set
+    # Plan-owned rows (installments, the card purchase, payments of installments off a card) keep the amount the plan set
     def plan_amount_unchanged
       return unless transaction? && will_save_change_to_amount?
 
-      case entryable.kind_in_database
-      when "installment" then errors.add(:amount, "Set by the plan.")
-      when "msi_purchase" then errors.add(:amount, "To change it, delete this purchase and add it again.")
+      if entryable.kind_in_database == "msi_purchase"
+        errors.add(:amount, "To change it, delete this purchase and add it again.")
+      elsif entryable.plan_locked?
+        errors.add(:amount, "Set by the plan.")
       end
     end
 

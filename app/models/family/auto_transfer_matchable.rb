@@ -37,6 +37,13 @@ module Family::AutoTransferMatchable
       .joins("JOIN transactions outflow_transactions ON outflow_transactions.id = outflow_candidates.entryable_id")
       .where.not("inflow_transactions.kind IN (:kinds) OR outflow_transactions.kind IN (:kinds)", kinds: Transaction::PLAN_LOCKED_KINDS)
       .where("
+        NOT EXISTS (
+          SELECT 1 FROM recurring_transactions locked_plans
+          WHERE locked_plans.plan_type = 'installments'
+            AND locked_plans.id IN (inflow_transactions.recurring_transaction_id, outflow_transactions.recurring_transaction_id)
+        )
+      ")
+      .where("
         (
           inflow_candidates.currency = outflow_candidates.currency AND
           inflow_candidates.amount = -outflow_candidates.amount
