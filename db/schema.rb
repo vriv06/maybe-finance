@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_10_06_120000) do
+ActiveRecord::Schema[7.2].define(version: 2026_10_11_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -595,6 +595,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_10_06_120000) do
     t.date "last_generated_on"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.string "frequency", default: "monthly", null: false
     t.index ["account_id"], name: "index_recurring_transactions_on_account_id"
     t.index ["category_id"], name: "index_recurring_transactions_on_category_id"
     t.index ["family_id"], name: "index_recurring_transactions_on_family_id"
