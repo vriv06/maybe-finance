@@ -10,7 +10,7 @@ class Account::RecurringCommitmentsTest < ActiveSupport::TestCase
     @card = accounts(:credit_card)
     @card.entries.delete_all
     purchase = create_transaction(account: @card, amount: 6000, name: "Sofa", date: Date.new(2026, 9, 15))
-    @sofa = RecurringTransaction.create_from_entry!(purchase, plan_type: "installments", total_payments: 6) # Oct 15 .. Mar 15
+    @sofa = RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 6) # Oct 15 .. Mar 15
     @netflix = @family.recurring_transactions.create!(account: @card, name: "Netflix", plan_type: "charge",
                                                       amount: 299, currency: "USD", start_date: Date.new(2026, 10, 12))
   end

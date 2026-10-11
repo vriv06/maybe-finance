@@ -17,7 +17,7 @@ class RecurringTransaction::BudgetImpactTest < ActiveSupport::TestCase
 
   test "projects the next three installments over the reference budget" do
     purchase = create_transaction(account: @card, amount: 3000, name: "iPad", date: Date.new(2026, 10, 8))
-    impact = RecurringTransaction.build_from_entry(purchase, plan_type: "installments", total_payments: 6).budget_impact
+    impact = RecurringTransaction.build_from_entry(purchase, frequency: "monthly", total_payments: 6).budget_impact
 
     assert_equal [ "November 2026", "December 2026", "January 2027" ], impact.months.map { |m| m.budget.name }
     assert impact.months.all?(&:reference?)
@@ -29,7 +29,7 @@ class RecurringTransaction::BudgetImpactTest < ActiveSupport::TestCase
 
   test "flags the months a purchase puts over budget" do
     purchase = create_transaction(account: @card, amount: 1200, name: "TV", date: Date.new(2026, 10, 8))
-    impact = RecurringTransaction.build_from_entry(purchase, plan_type: "installments", total_payments: 2).budget_impact
+    impact = RecurringTransaction.build_from_entry(purchase, frequency: "monthly", total_payments: 2).budget_impact
 
     assert_equal 2, impact.installments_count
     assert_equal [ BigDecimal("100") ] * 2, impact.over_months.map(&:overage)
@@ -38,7 +38,7 @@ class RecurringTransaction::BudgetImpactTest < ActiveSupport::TestCase
 
   test "skips installments in months that already ended" do
     purchase = create_transaction(account: @card, amount: 600, name: "Chair", date: Date.new(2026, 7, 2))
-    impact = RecurringTransaction.build_from_entry(purchase, plan_type: "installments", total_payments: 6).budget_impact
+    impact = RecurringTransaction.build_from_entry(purchase, frequency: "monthly", total_payments: 6).budget_impact
 
     assert_equal "October 2026", impact.months.first.budget.name # Aug and Sep are over
   end
@@ -47,15 +47,15 @@ class RecurringTransaction::BudgetImpactTest < ActiveSupport::TestCase
     @family.budgets.destroy_all
     purchase = create_transaction(account: @card, amount: 600, name: "Chair", date: Date.new(2026, 10, 8))
 
-    assert_not RecurringTransaction.build_from_entry(purchase, plan_type: "installments", total_payments: 3).budget_impact.available?
+    assert_not RecurringTransaction.build_from_entry(purchase, frequency: "monthly", total_payments: 3).budget_impact.available?
   end
 
   test "the preview total equals the committed amount once the plan is saved" do
     purchase = create_transaction(account: @card, amount: 3000, name: "iPad", date: Date.new(2026, 10, 8))
-    preview = RecurringTransaction.build_from_entry(purchase, plan_type: "installments", total_payments: 3).budget_impact
+    preview = RecurringTransaction.build_from_entry(purchase, frequency: "monthly", total_payments: 3).budget_impact
     expected = preview.months.to_h { |month| [ month.budget.start_date, month.total ] }
 
-    RecurringTransaction.create_from_entry!(purchase, plan_type: "installments", total_payments: 3)
+    RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 3)
 
     expected.each do |start_date, total|
       assert_equal total, Budget.for_cycle(@family, start_date).committed_spending

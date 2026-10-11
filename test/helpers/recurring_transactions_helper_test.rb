@@ -56,7 +56,7 @@ class RecurringTransactionsHelperTest < ActionView::TestCase
 
   test "describes where a transaction comes from" do
     purchase = create_transaction(account: @card, amount: 1200, name: "Desk", date: Date.new(2026, 8, 20))
-    plan = RecurringTransaction.create_from_entry!(purchase, plan_type: "installments", total_payments: 12)
+    plan = RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 12)
 
     assert_equal "Paid in 12 installments", recurring_provenance_label(purchase.transaction)
     assert_equal "Installment 1 of 12", recurring_provenance_label(plan.transactions.find_by(installment_number: 1))

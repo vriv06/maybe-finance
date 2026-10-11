@@ -37,7 +37,7 @@ class RecurringTransaction < ApplicationRecord
   has_many :transactions, dependent: :nullify
   after_destroy :sync_account_later, unless: :destroyed_by_association
 
-  # The entry a plan is being built from (capture, preview, convert); drives eligibility and first-payment checks
+  # The entry a plan is being built from (capture, preview, convert); drives the eligibility check
   attr_accessor :source_entry
 
   validates :name, :currency, presence: true
@@ -48,9 +48,7 @@ class RecurringTransaction < ApplicationRecord
   validates :amount, numericality: { greater_than: 0 }
   validate :total_payments_in_range
   validate :installment_amount_large_enough
-  validate :installments_require_credit_card
   validate :account_manual_and_active, on: :create
-  validate :first_payment_not_before_purchase, on: :create
   validate :source_entry_eligible, on: :create
   validate :schedule_unchanged, on: :update
 
@@ -72,22 +70,27 @@ class RecurringTransaction < ApplicationRecord
       nil
     end
 
-    def build_from_entry(entry, plan_type:, total_payments: nil, start_date: nil)
+    # The plan type follows the end count: an end means a purchase in installments (the amount entered is the
+    # total), no end means a recurring charge (the amount is per payment). Clients never choose it.
+    def build_from_entry(entry, frequency:, total_payments: nil)
       source = entry.entryable
+      total_payments = total_payments.presence
 
-      new(
+      plan = new(
         source_entry: entry,
         family: entry.account.family,
         account: entry.account,
         name: entry.name,
         category: source.try(:category),
         merchant: source.try(:merchant),
-        plan_type: plan_type,
+        frequency: frequency,
+        plan_type: total_payments ? "installments" : "charge",
         amount: entry.amount,
         currency: entry.currency,
-        total_payments: total_payments,
-        start_date: plan_type == "installments" ? first_payment_date(entry, start_date) : entry.date
+        total_payments: total_payments
       )
+      plan.start_date = plan.first_payment_date_after(entry.date)
+      plan
     end
 
     def create_from_entry!(entry, **attributes)
@@ -96,27 +99,21 @@ class RecurringTransaction < ApplicationRecord
         plan.save!
 
         source = entry.entryable
-        if plan.installments?
-          source.update!(kind: "msi_purchase", recurring_transaction: plan)
-        else
+        if plan.source_is_first_payment?
+          # Installments off a card: the purchase becomes payment 1, so it keeps only its share of the total
+          if plan.installments?
+            entry.update!(amount: plan.occurrence_amount(1))
+            entry.sync_account_later
+          end
           source.update!(recurring_transaction: plan, installment_number: 1)
+        else
+          source.update!(kind: "msi_purchase", recurring_transaction: plan)
         end
 
         plan.generate_due!
         plan
       end
     end
-
-    private
-      # nil means "not provided" (default: one month after the purchase); a blank or invalid string stays nil
-      def first_payment_date(entry, start_date)
-        return entry.date&.next_month if start_date.nil?
-        return start_date unless start_date.is_a?(String)
-
-        Date.iso8601(start_date)
-      rescue Date::Error
-        nil
-      end
   end
 
   def installments?
@@ -125,6 +122,23 @@ class RecurringTransaction < ApplicationRecord
 
   def charge?
     plan_type == "charge"
+  end
+
+  def credit_card?
+    account&.credit_card? || false
+  end
+
+  # Card installments keep the purchase apart (msi_purchase adds the debt); every other plan counts
+  # its source transaction as payment 1
+  def source_is_first_payment?
+    charge? || !credit_card?
+  end
+
+  # Card installments start one interval after the purchase; otherwise the purchase is payment 1
+  def first_payment_date_after(date)
+    return date if date.nil? || source_is_first_payment? || !FREQUENCIES.key?(frequency)
+
+    date + FREQUENCIES.fetch(frequency)
   end
 
   # Advances from the first payment, so month-based frequencies clamp without drifting
@@ -194,9 +208,9 @@ class RecurringTransaction < ApplicationRecord
     occurrence_date(next_number)
   end
 
-  # Occurrences that saving this plan adds with past dates (a charge's first payment is the source transaction)
+  # Occurrences that saving this plan adds with past dates (payment 1 is the source transaction unless it's a card purchase)
   def backfill_count(as_of: family.today)
-    upcoming(through: as_of).count { |occurrence| installments? || occurrence.number > 1 }
+    upcoming(through: as_of).count { |occurrence| !source_is_first_payment? || occurrence.number > 1 }
   end
 
   # The day a finished plan stopped: when it was stopped, or its last payment
@@ -244,7 +258,7 @@ class RecurringTransaction < ApplicationRecord
 
       if installments?
         unless whole&.between?(2, MAX_INSTALLMENTS)
-          errors.add(:total_payments, "Enter 2 to #{MAX_INSTALLMENTS} installments.")
+          errors.add(:total_payments, "Enter 2 to #{MAX_INSTALLMENTS} payments.")
         end
       elsif raw.present? && !whole&.between?(1, MAX_CHARGE_PAYMENTS)
         errors.add(:total_payments, "Enter a whole number, or leave it empty.")
@@ -256,13 +270,7 @@ class RecurringTransaction < ApplicationRecord
       return if errors.include?(:total_payments)
       return if (amount / total_payments).floor(2) >= BigDecimal("0.01")
 
-      errors.add(:total_payments, "Too small to split into #{total_payments} installments. Use fewer.")
-    end
-
-    def installments_require_credit_card
-      return unless installments? && account
-
-      errors.add(:account, "Installments only work on credit cards.") unless account.accountable_type == "CreditCard"
+      errors.add(:total_payments, "Too small to split into #{total_payments} payments. Use fewer.")
     end
 
     def account_manual_and_active
@@ -270,13 +278,6 @@ class RecurringTransaction < ApplicationRecord
       return if account.manual? && account.active?
 
       errors.add(:account, INELIGIBILITY_MESSAGES[:account_not_manual])
-    end
-
-    def first_payment_not_before_purchase
-      return unless installments? && start_date && source_entry&.date
-      return if start_date >= source_entry.date
-
-      errors.add(:start_date, "The first payment can't be before #{source_entry.date.strftime("%b %-d, %Y")}.")
     end
 
     def source_entry_eligible
@@ -304,7 +305,7 @@ class RecurringTransaction < ApplicationRecord
           amount: occurrence.amount,
           currency: currency,
           entryable: Transaction.new(
-            kind: installments? ? "installment" : "standard",
+            kind: source_is_first_payment? ? "standard" : "installment",
             category: category,
             merchant: merchant,
             recurring_transaction: self,
@@ -331,7 +332,7 @@ class RecurringTransaction < ApplicationRecord
     end
 
     def release_transactions
-      return unless installments?
+      return if source_is_first_payment? # charges and installments off a card: payments stay, unlinked (dependent: :nullify)
 
       installment_ids = transactions.where(kind: "installment").where.not(installment_number: nil).select(:id)
       Entry.where(entryable_type: "Transaction", entryable_id: installment_ids).find_each(&:destroy!)

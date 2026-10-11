@@ -3,19 +3,20 @@ module RecurrenceParams
   extend ActiveSupport::Concern
 
   private
+    # A tampered `recurrence=foo` (not a hash) reads as "no recurrence" instead of raising.
+    # plan_type and start_date are derived by the model, never taken from the client.
     def recurrence_params
-      params.fetch(:recurrence, {}).permit(:plan_type, :total_payments, :start_date)
+      raw = params[:recurrence]
+      raw.is_a?(ActionController::Parameters) ? raw.permit(:frequency, :total_payments) : ActionController::Parameters.new.permit
     end
 
+    # Repeat isn't None. An unknown frequency still counts, so the plan reports it (422, never a 500)
     def recurrence_requested?
-      recurrence_params[:plan_type].in?(RecurringTransaction::PLAN_TYPES)
+      recurrence_params[:frequency].present?
     end
 
-    # start_date is only passed when the form sent it, so a cleared field is an error rather than the default
     def recurrence_attributes
-      attributes = { plan_type: recurrence_params[:plan_type], total_payments: recurrence_params[:total_payments].presence }
-      attributes[:start_date] = recurrence_params[:start_date].to_s if recurrence_params.key?(:start_date)
-      attributes
+      { frequency: recurrence_params[:frequency].to_s, total_payments: recurrence_params[:total_payments].presence }
     end
 
     def recurrence_notice(plan)

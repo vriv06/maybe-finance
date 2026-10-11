@@ -10,7 +10,7 @@ class Transactions::RecurrencesController < ApplicationController
 
   def new
     unless recurrence_requested?
-      @recurrence = RecurringTransaction.build_from_entry(@entry, plan_type: nil)
+      @recurrence = RecurringTransaction.build_from_entry(@entry, frequency: nil)
       return render_step(:fields)
     end
 

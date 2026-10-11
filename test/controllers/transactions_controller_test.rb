@@ -210,7 +210,7 @@ end
     assert_difference [ "Entry.count", "RecurringTransaction.count" ], 1 do
       post transactions_url, params: {
         entry: recurring_entry_params(card, amount: 15000),
-        recurrence: { plan_type: "installments", total_payments: "12", start_date: "2026-11-08" }
+        recurrence: { frequency: "monthly", total_payments: "12" }
       }
     end
 
@@ -225,7 +225,7 @@ end
 
     post transactions_url, params: {
       entry: recurring_entry_params(accounts(:depository), amount: 299),
-      recurrence: { plan_type: "charge", total_payments: "" }
+      recurrence: { frequency: "monthly", total_payments: "" }
     }
 
     entry = Entry.find_by!(name: "iPad Air")
@@ -238,7 +238,7 @@ end
       assert_no_difference "RecurringTransaction.count" do
         post transactions_url, params: {
           entry: recurring_entry_params(accounts(:depository), amount: 50),
-          recurrence: { plan_type: "" }
+          recurrence: { frequency: "" }
         }
       end
     end
@@ -252,28 +252,28 @@ end
     assert_no_difference [ "Entry.count", "RecurringTransaction.count" ] do
       post transactions_url, params: {
         entry: recurring_entry_params(accounts(:credit_card), amount: 15000),
-        recurrence: { plan_type: "installments", total_payments: "1", start_date: "2026-11-08" }
+        recurrence: { frequency: "monthly", total_payments: "1" }
       }, headers: { "Turbo-Frame" => "modal" }
     end
 
     assert_response :unprocessable_entity
-    assert_includes response.body, "Enter 2 to 48 installments."
+    assert_includes response.body, "Enter 2 to 48 payments."
     assert_select "details[open]", text: /Recurring payment/
     assert_select "input#recurrence_total_payments_installments[autofocus]"
   end
 
-  test "an out-of-range monthly charge count is refused, not a 500" do
+  test "an out-of-range end count is refused, not a 500" do
     travel_to Date.new(2026, 10, 8)
 
     assert_no_difference [ "Entry.count", "RecurringTransaction.count" ] do
       post transactions_url, params: {
         entry: recurring_entry_params(accounts(:depository), amount: 50),
-        recurrence: { plan_type: "charge", total_payments: "3000000000" }
+        recurrence: { frequency: "monthly", total_payments: "3000000000" }
       }, headers: { "Turbo-Frame" => "modal" }
     end
 
     assert_response :unprocessable_entity
-    assert_includes response.body, "Enter a whole number, or leave it empty."
+    assert_includes response.body, "Enter 2 to 48 payments."
   end
 
   test "a 422 keeps the submitted date" do
@@ -281,7 +281,7 @@ end
 
     post transactions_url, params: {
       entry: recurring_entry_params(accounts(:credit_card), amount: 15000).merge(date: "2026-09-01"),
-      recurrence: { plan_type: "installments", total_payments: "1", start_date: "2026-11-08" }
+      recurrence: { frequency: "monthly", total_payments: "1" }
     }, headers: { "Turbo-Frame" => "modal" }
 
     assert_response :unprocessable_entity
@@ -294,7 +294,7 @@ end
     assert_no_difference [ "Entry.count", "RecurringTransaction.count" ] do
       post transactions_url, params: {
         entry: recurring_entry_params(accounts(:credit_card), amount: 15000),
-        recurrence: { plan_type: "installments", total_payments: "12", start_date: "2026-11-08" }
+        recurrence: { frequency: "monthly", total_payments: "12" }
       }, headers: { "Turbo-Frame" => "modal" }
     end
 
@@ -303,23 +303,63 @@ end
   end
 
   test "new with a recurrence choice but no account does not raise" do
-    get new_transaction_url(recurrence: { plan_type: "charge" }), headers: { "Turbo-Frame" => "modal" }
+    get new_transaction_url(recurrence: { frequency: "monthly" }), headers: { "Turbo-Frame" => "modal" }
 
     assert_response :success
   end
 
-  test "installments are refused on accounts that aren't credit cards" do
+  test "installments on an account that isn't a card become ordinary payments" do
     travel_to Date.new(2026, 10, 8)
 
-    assert_no_difference "Entry.count" do
+    assert_difference "RecurringTransaction.count", 1 do
       post transactions_url, params: {
         entry: recurring_entry_params(accounts(:depository), amount: 1200),
-        recurrence: { plan_type: "installments", total_payments: "3", start_date: "2026-11-08" }
+        recurrence: { frequency: "monthly", total_payments: "3" }
+      }
+    end
+
+    entry = Entry.find_by!(name: "iPad Air")
+    assert entry.transaction.standard?
+    assert_equal BigDecimal("400"), entry.amount
+    assert_equal 1, entry.transaction.installment_number
+    assert_equal BigDecimal("1200"), entry.transaction.recurring_transaction.amount
+  end
+
+  test "a client plan type is ignored: no end count means a recurring charge" do
+    travel_to Date.new(2026, 10, 8)
+
+    post transactions_url, params: {
+      entry: recurring_entry_params(accounts(:credit_card), amount: 300),
+      recurrence: { frequency: "weekly", plan_type: "installments", start_date: "2027-01-01" }
+    }
+
+    plan = Entry.find_by!(name: "iPad Air").transaction.recurring_transaction
+    assert plan.charge?
+    assert_equal "weekly", plan.frequency
+    assert_equal Date.new(2026, 10, 8), plan.start_date
+  end
+
+  test "an unknown frequency is refused, not a 500" do
+    travel_to Date.new(2026, 10, 8)
+
+    assert_no_difference [ "Entry.count", "RecurringTransaction.count" ] do
+      post transactions_url, params: {
+        entry: recurring_entry_params(accounts(:credit_card), amount: 300),
+        recurrence: { frequency: "fortnightly" }
       }, headers: { "Turbo-Frame" => "modal" }
     end
 
     assert_response :unprocessable_entity
-    assert_includes response.body, "Installments only work on credit cards."
+  end
+
+  test "a tampered recurrence param creates an ordinary transaction" do
+    assert_difference "Entry.count", 1 do
+      assert_no_difference "RecurringTransaction.count" do
+        post transactions_url, params: { entry: recurring_entry_params(accounts(:depository), amount: 50), recurrence: "foo" }
+      end
+    end
+
+    assert_equal "Transaction created", flash[:notice]
   end
 
   test "the drawer explains a generated installment and locks its amount" do
@@ -417,7 +457,7 @@ end
     travel_to Date.new(2026, 10, 8)
     post transactions_url, params: {
       entry: recurring_entry_params(accounts(:depository), amount: 299),
-      recurrence: { plan_type: "charge", total_payments: "" }
+      recurrence: { frequency: "monthly", total_payments: "" }
     }
     entry = Entry.find_by!(name: "iPad Air")
 
@@ -443,7 +483,7 @@ end
     def create_installment_plan
       card = accounts(:credit_card)
       purchase = create_transaction(account: card, amount: 3000, name: "Laptop", date: Date.new(2026, 8, 20))
-      RecurringTransaction.create_from_entry!(purchase, plan_type: "installments", total_payments: 3)
+      RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 3)
     end
 
     def recurring_entry_params(account, amount:)

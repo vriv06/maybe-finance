@@ -8,9 +8,9 @@ class Transactions::RecurrencesControllerTest < ActionDispatch::IntegrationTest
     sign_in users(:family_admin)
     @card = accounts(:credit_card)
     @card.entries.delete_all
-    @entry = create_transaction(account: @card, amount: 3000, name: "Laptop", date: Date.new(2026, 8, 20))
+    @entry = create_transaction(account: @card, amount: 3000, name: "Laptop", date: Date.new(2026, 7, 20))
     @frame = { "Turbo-Frame" => dom_id(@entry, :recurrence) }
-    @installments = { plan_type: "installments", total_payments: "3", start_date: "2026-08-25" }
+    @installments = { frequency: "monthly", total_payments: "3" }
   end
 
   test "opens the fields with Doesn't repeat selected" do
@@ -25,7 +25,7 @@ class Transactions::RecurrencesControllerTest < ActionDispatch::IntegrationTest
     get new_transaction_recurrence_url(@entry), params: { recurrence: @installments.merge(total_payments: "60") }, headers: @frame
 
     assert_response :unprocessable_entity
-    assert_includes response.body, "Enter 2 to 48 installments."
+    assert_includes response.body, "Enter 2 to 48 payments."
   end
 
   test "review confirms what will change" do
@@ -53,7 +53,7 @@ class Transactions::RecurrencesControllerTest < ActionDispatch::IntegrationTest
     payment = create_transaction(account: @card, amount: 500, kind: "cc_payment")
 
     assert_no_difference "RecurringTransaction.count" do
-      post transaction_recurrence_url(payment), params: { recurrence: { plan_type: "charge" } },
+      post transaction_recurrence_url(payment), params: { recurrence: { frequency: "monthly" } },
            headers: { "Turbo-Frame" => dom_id(payment, :recurrence) }
     end
 
@@ -69,21 +69,31 @@ class Transactions::RecurrencesControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, %(aria-label="Edit recurring payment")
   end
 
-  test "an unparseable start date renders the fields with 422 and saves nothing" do
-    assert_no_difference "RecurringTransaction.count" do
-      post transaction_recurrence_url(@entry), params: { recurrence: @installments.merge(start_date: "not-a-date") }, headers: @frame
-    end
-
-    assert_response :unprocessable_entity
-    assert_includes response.body, "Review"
-  end
-
   test "a non-numeric installment count renders the fields with 422 and saves nothing" do
     assert_no_difference "RecurringTransaction.count" do
       post transaction_recurrence_url(@entry), params: { recurrence: @installments.merge(total_payments: "abc") }, headers: @frame
     end
 
     assert_response :unprocessable_entity
+  end
+
+  test "an unknown frequency renders the fields with 422 and saves nothing" do
+    get new_transaction_recurrence_url(@entry), params: { recurrence: @installments.merge(frequency: "bogus") }, headers: @frame
+
+    assert_response :unprocessable_entity
+
+    assert_no_difference "RecurringTransaction.count" do
+      post transaction_recurrence_url(@entry), params: { recurrence: @installments.merge(frequency: "bogus") }, headers: @frame
+    end
+
+    assert_response :unprocessable_entity
+    assert_nil @entry.entryable.reload.recurring_transaction_id
+  end
+
+  test "a tampered recurrence param opens the fields" do
+    get new_transaction_recurrence_url(@entry), params: { recurrence: "foo" }, headers: @frame
+
+    assert_response :success
   end
 
   test "a failed conversion shows the error on the confirm step and saves nothing" do

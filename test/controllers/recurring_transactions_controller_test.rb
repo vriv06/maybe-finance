@@ -14,7 +14,7 @@ class RecurringTransactionsControllerTest < ActionDispatch::IntegrationTest
   test "preview summarizes installments for a new purchase" do
     get preview_recurring_transactions_url, params: {
       entry: { account_id: @card.id, amount: "15000", currency: "USD", date: "2026-10-08" },
-      recurrence: { plan_type: "installments", total_payments: "12", start_date: "2026-11-08" }
+      recurrence: { frequency: "monthly", total_payments: "12" }
     }, headers: @frame
 
     assert_response :success
@@ -24,12 +24,33 @@ class RecurringTransactionsControllerTest < ActionDispatch::IntegrationTest
 
   test "preview stays empty while data is missing" do
     get preview_recurring_transactions_url, params: {
-      entry: { account_id: @card.id, amount: "15000", currency: "USD", date: "2026-10-08" },
-      recurrence: { plan_type: "installments", total_payments: "" }
+      entry: { account_id: @card.id, amount: "", currency: "USD", date: "2026-10-08" },
+      recurrence: { frequency: "monthly", total_payments: "12" }
     }, headers: @frame
 
     assert_response :success
     assert_includes response.body, %(<turbo-frame id="recurring_preview">)
+    assert_not_includes response.body, "installments of"
+    assert_not_includes response.body, "payments of"
+  end
+
+  test "preview with an unknown frequency stays empty, not a 500" do
+    get preview_recurring_transactions_url, params: {
+      entry: { account_id: @card.id, amount: "1200", currency: "USD", date: "2026-10-08" },
+      recurrence: { frequency: "bogus", total_payments: "3" }, impact: "1"
+    }, headers: @frame
+
+    assert_response :success
+    assert_includes response.body, %(<turbo-frame id="recurring_preview">)
+    assert_not_includes response.body, "installments of"
+  end
+
+  test "preview with a tampered recurrence param stays empty" do
+    get preview_recurring_transactions_url, params: {
+      entry: { account_id: @card.id, amount: "1200", currency: "USD", date: "2026-10-08" }, recurrence: "foo"
+    }, headers: @frame
+
+    assert_response :success
     assert_not_includes response.body, "installments of"
   end
 
@@ -42,7 +63,7 @@ class RecurringTransactionsControllerTest < ActionDispatch::IntegrationTest
     get preview_recurring_transactions_url, params: {
       impact: "1",
       entry: { account_id: @card.id, amount: "3600", currency: "USD", date: "2026-10-08" },
-      recurrence: { plan_type: "installments", total_payments: "3", start_date: "2026-11-08" }
+      recurrence: { frequency: "monthly", total_payments: "3" }
     }, headers: @frame
 
     assert_includes response.body, "This puts 3 budgets over. The first is November 2026."
@@ -53,7 +74,7 @@ class RecurringTransactionsControllerTest < ActionDispatch::IntegrationTest
   test "preview of an existing entry" do
     entry = create_transaction(account: @card, amount: 199, name: "Spotify", date: Date.new(2026, 6, 30))
 
-    get preview_recurring_transactions_url, params: { entry_id: entry.id, recurrence: { plan_type: "charge" } }, headers: @frame
+    get preview_recurring_transactions_url, params: { entry_id: entry.id, recurrence: { frequency: "monthly" } }, headers: @frame
 
     assert_includes response.body, "$199.00 every month"
     assert_includes response.body, ERB::Util.html_escape("3 already due. They'll be added with their original dates.")
@@ -66,14 +87,14 @@ class RecurringTransactionsControllerTest < ActionDispatch::IntegrationTest
                                                 entryable: Transaction.new)
 
     assert_no_difference [ "RecurringTransaction.count", "Entry.count" ] do
-      get preview_recurring_transactions_url, params: { entry_id: other_entry.id, recurrence: { plan_type: "charge" } }, headers: @frame
+      get preview_recurring_transactions_url, params: { entry_id: other_entry.id, recurrence: { frequency: "monthly" } }, headers: @frame
       assert_response :success
       assert_includes response.body, %(<turbo-frame id="recurring_preview">)
       assert_not_includes response.body, "every month"
 
       get preview_recurring_transactions_url, params: {
         entry: { account_id: other_account.id, amount: "15000", currency: "USD", date: "2026-10-08" },
-        recurrence: { plan_type: "installments", total_payments: "12", start_date: "2026-11-08" }
+        recurrence: { frequency: "monthly", total_payments: "12" }
       }, headers: @frame
       assert_response :success
       assert_includes response.body, %(<turbo-frame id="recurring_preview">)
@@ -118,7 +139,7 @@ class RecurringTransactionsControllerTest < ActionDispatch::IntegrationTest
 
   test "never changes an installment plan's total" do
     purchase = create_transaction(account: @card, amount: 1200, name: "Desk", date: Date.new(2026, 10, 1))
-    plan = RecurringTransaction.create_from_entry!(purchase, plan_type: "installments", total_payments: 3)
+    plan = RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 3)
 
     patch recurring_transaction_url(plan), params: { recurring_transaction: { name: "Standing desk", amount: "1" } },
           headers: { "Accept" => "text/vnd.turbo-stream.html" }

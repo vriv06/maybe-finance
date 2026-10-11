@@ -12,7 +12,7 @@ class Family::RecurringCommitmentsTest < ActiveSupport::TestCase
 
   test "counts generated rows and upcoming occurrences in the range, never the purchase" do
     purchase = create_transaction(account: @card, amount: 3000, name: "Laptop", date: Date.new(2026, 8, 20))
-    RecurringTransaction.create_from_entry!(purchase, plan_type: "installments", total_payments: 3) # Sep 20 generated, Oct 20 upcoming
+    RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 3) # Sep 20 generated, Oct 20 upcoming
 
     commitments = @family.recurring_commitments(start_date: Date.new(2026, 8, 1), end_date: Date.new(2026, 10, 31))
 
@@ -57,6 +57,16 @@ class Family::RecurringCommitmentsTest < ActiveSupport::TestCase
     november = Budget.for_cycle(@family, Date.new(2026, 11, 1))
 
     assert_equal BigDecimal("200"), november.committed_spending # Nov 5, 12, 19, 26
+  end
+
+  test "installments off a card commit every payment, the purchase included" do
+    purchase = create_transaction(account: accounts(:depository), amount: 900, name: "Sofa", date: Date.new(2026, 8, 20))
+    RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 3) # Aug 20 (the purchase), Sep 20, Oct 20
+
+    commitments = @family.recurring_commitments(start_date: Date.new(2026, 8, 1), end_date: Date.new(2026, 10, 31))
+
+    assert_equal [ 1, 2, 3 ], commitments.items.map(&:number)
+    assert_equal BigDecimal("900"), commitments.total
   end
 
   private

@@ -8,7 +8,7 @@ class CustomConfirmTest < ActiveSupport::TestCase
     @card = accounts(:credit_card)
     @card.entries.delete_all
     purchase = create_transaction(account: @card, amount: 1200, name: "MacBook Air", date: Date.new(2026, 7, 20))
-    @plan = RecurringTransaction.create_from_entry!(purchase, plan_type: "installments", total_payments: 12) # 2 added
+    @plan = RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 12) # 2 added
     @purchase = purchase
   end
 

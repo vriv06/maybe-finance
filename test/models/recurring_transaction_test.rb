@@ -24,12 +24,9 @@ class RecurringTransactionTest < ActiveSupport::TestCase
     assert_equal Date.new(2026, 3, 31), plan.end_date
   end
 
-  test "installments require a credit card and at least two payments" do
+  test "installments need at least two payments, on any manual account" do
     assert build_plan.valid?
-
-    not_card = build_plan(account: accounts(:depository))
-    assert_not not_card.valid?
-    assert_includes not_card.errors.attribute_names, :account
+    assert build_plan(account: accounts(:depository)).valid?
 
     one_payment = build_plan(total_payments: 1)
     assert_not one_payment.valid?
@@ -97,7 +94,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
 
   test "generate_due! does not regenerate a deleted charge source" do
     entry = create_transaction(account: @credit_card, amount: 299, name: "Netflix", date: Date.current)
-    plan = RecurringTransaction.create_from_entry!(entry, plan_type: "charge")
+    plan = RecurringTransaction.create_from_entry!(entry, frequency: "monthly")
 
     entry.destroy!
 
@@ -108,7 +105,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
   test "destroying the msi purchase removes its plan and installments" do
     unrelated = create_transaction(account: @credit_card, amount: 50, name: "Coffee", date: Date.current)
     purchase = create_transaction(account: @credit_card, amount: 3000, name: "Laptop", date: Date.current - 2.months - 5.days)
-    plan = RecurringTransaction.create_from_entry!(purchase, plan_type: "installments", total_payments: 3)
+    plan = RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 3)
     assert_equal 2, plan.transactions.where(kind: "installment").count
 
     Account.any_instance.expects(:sync_later).once
@@ -123,7 +120,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
 
   test "destroying an installments plan reverts the purchase to standard" do
     purchase = create_transaction(account: @credit_card, amount: 3000, name: "Laptop", date: Date.current - 2.months - 5.days)
-    plan = RecurringTransaction.create_from_entry!(purchase, plan_type: "installments", total_payments: 3)
+    plan = RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 3)
 
     assert_difference -> { Entry.count } => -2 do
       plan.destroy!
@@ -149,7 +146,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
 
   test "destroying an account with an msi purchase removes everything" do
     purchase = create_transaction(account: @credit_card, amount: 3000, name: "Laptop", date: Date.current - 2.months - 5.days)
-    RecurringTransaction.create_from_entry!(purchase, plan_type: "installments", total_payments: 3)
+    RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 3)
 
     assert_difference -> { RecurringTransaction.count } => -1 do
       Account.find(@credit_card.id).destroy!
@@ -243,7 +240,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
   test "create_from_entry! turns a past purchase into an msi plan and backfills due installments" do
     purchase = create_transaction(account: @credit_card, amount: 3000, name: "Laptop", date: Date.current - 2.months - 5.days)
 
-    plan = RecurringTransaction.create_from_entry!(purchase, plan_type: "installments", total_payments: 3)
+    plan = RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 3)
 
     assert purchase.entryable.reload.msi_purchase?
     assert_equal plan, purchase.entryable.recurring_transaction
@@ -254,7 +251,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
   test "create_from_entry! links a charge's original entry as the first occurrence" do
     entry = create_transaction(account: @credit_card, amount: 299, name: "Netflix", date: Date.current)
 
-    plan = RecurringTransaction.create_from_entry!(entry, plan_type: "charge")
+    plan = RecurringTransaction.create_from_entry!(entry, frequency: "monthly")
 
     assert_equal 1, entry.entryable.reload.installment_number
     assert_equal 1, plan.transactions.count
@@ -262,7 +259,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
 
   test "create_from_entry! rejects transactions that can't repeat" do
     linked = create_transaction(account: @credit_card, amount: 100, name: "Netflix")
-    RecurringTransaction.create_from_entry!(linked, plan_type: "charge")
+    RecurringTransaction.create_from_entry!(linked, frequency: "monthly")
 
     {
       create_transaction(account: @credit_card, amount: 100, kind: "cc_payment") => "Transfers can't repeat.",
@@ -271,7 +268,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
       linked => "This is already part of a recurring payment."
     }.each do |entry, message|
       error = assert_raises(ActiveRecord::RecordInvalid) do
-        RecurringTransaction.create_from_entry!(entry, plan_type: "charge")
+        RecurringTransaction.create_from_entry!(entry, frequency: "monthly")
       end
       assert_includes error.record.errors[:base], message
     end
@@ -282,7 +279,7 @@ class RecurringTransactionTest < ActiveSupport::TestCase
 
     assert_equal :foreign_currency, RecurringTransaction.ineligibility_reason(entry)
     error = assert_raises(ActiveRecord::RecordInvalid) do
-      RecurringTransaction.create_from_entry!(entry, plan_type: "charge")
+      RecurringTransaction.create_from_entry!(entry, frequency: "monthly")
     end
     assert_includes error.record.errors[:base], "Recurring payments only work in your main currency."
   end
@@ -295,11 +292,9 @@ class RecurringTransactionTest < ActiveSupport::TestCase
   end
 
   test "validation messages are the interface copy" do
-    assert_equal [ "Enter 2 to 48 installments." ], build_plan(total_payments: 49).tap(&:validate).errors[:total_payments]
-    assert_equal [ "Too small to split into 6 installments. Use fewer." ],
+    assert_equal [ "Enter 2 to 48 payments." ], build_plan(total_payments: 49).tap(&:validate).errors[:total_payments]
+    assert_equal [ "Too small to split into 6 payments. Use fewer." ],
                  build_plan(amount: BigDecimal("0.05"), total_payments: 6).tap(&:validate).errors[:total_payments]
-    assert_includes build_plan(account: accounts(:depository)).tap(&:validate).errors[:account],
-                    "Installments only work on credit cards."
     assert_equal [ "Enter a whole number, or leave it empty." ],
                  build_plan(plan_type: "charge", total_payments: "abc").tap(&:validate).errors[:total_payments]
   end
@@ -311,21 +306,6 @@ class RecurringTransactionTest < ActiveSupport::TestCase
     assert_equal [ "Enter a whole number, or leave it empty." ], plan.errors[:total_payments]
   end
 
-  test "the first payment can't be missing or before the purchase" do
-    purchase = create_transaction(account: @credit_card, amount: 1200, date: Date.new(2026, 10, 8))
-
-    early = RecurringTransaction.build_from_entry(purchase, plan_type: "installments", total_payments: 3, start_date: "2026-10-01")
-    assert_not early.valid?
-    assert_equal [ "The first payment can't be before Oct 8, 2026." ], early.errors[:start_date]
-
-    blank = RecurringTransaction.build_from_entry(purchase, plan_type: "installments", total_payments: 3, start_date: "")
-    assert_not blank.valid?
-    assert_equal [ "Choose a date for the first payment." ], blank.errors[:start_date]
-
-    default = RecurringTransaction.build_from_entry(purchase, plan_type: "installments", total_payments: 3)
-    assert_equal Date.new(2026, 11, 8), default.start_date
-  end
-
   test "the schedule can't change after the plan is created" do
     plan = build_plan
     plan.save!
@@ -335,15 +315,18 @@ class RecurringTransactionTest < ActiveSupport::TestCase
     assert plan.reload.update(name: "New laptop")
   end
 
-  test "backfill_count counts past occurrences except a charge's own first payment" do
+  test "backfill_count leaves out the source transaction when it is payment 1" do
     travel_to Date.new(2026, 10, 8)
     purchase = create_transaction(account: @credit_card, amount: 3000, date: Date.new(2026, 7, 8))
+    other = create_transaction(account: accounts(:depository), amount: 3000, date: Date.new(2026, 7, 8))
 
-    installments = RecurringTransaction.build_from_entry(purchase, plan_type: "installments", total_payments: 6)
-    charge = RecurringTransaction.build_from_entry(purchase, plan_type: "charge")
+    card_installments = RecurringTransaction.build_from_entry(purchase, frequency: "monthly", total_payments: 6)
+    charge = RecurringTransaction.build_from_entry(purchase, frequency: "monthly")
+    other_installments = RecurringTransaction.build_from_entry(other, frequency: "monthly", total_payments: 6)
 
-    assert_equal 3, installments.backfill_count # Aug 8, Sep 8, Oct 8
-    assert_equal 3, charge.backfill_count       # Jul 8 is the purchase itself
+    assert_equal 3, card_installments.backfill_count  # Aug 8, Sep 8, Oct 8
+    assert_equal 3, charge.backfill_count             # Jul 8 is the purchase itself
+    assert_equal 3, other_installments.backfill_count # Jul 8 is payment 1
   end
 
   test "ended_on and monthly_amount describe the plan" do
@@ -393,6 +376,69 @@ class RecurringTransactionTest < ActiveSupport::TestCase
 
     assert_equal BigDecimal("250"), plan.monthly_amount # Oct 1, 8, 15, 22, 29
     assert_equal BigDecimal("50"), plan.next_payment_amount
+  end
+
+  test "an end count makes installments and no end makes a charge" do
+    travel_to Date.new(2026, 10, 8)
+    purchase = create_transaction(account: @credit_card, amount: 1200, date: Date.new(2026, 10, 8))
+
+    charge = RecurringTransaction.build_from_entry(purchase, frequency: "weekly")
+    card_installments = RecurringTransaction.build_from_entry(purchase, frequency: "weekly", total_payments: "4")
+
+    assert charge.charge?
+    assert_equal Date.new(2026, 10, 8), charge.start_date
+    assert card_installments.installments?
+    assert_equal Date.new(2026, 10, 15), card_installments.start_date # one interval after the purchase
+  end
+
+  test "end counts must be 2 to 48 on any account" do
+    purchase = create_transaction(account: accounts(:depository), amount: 1200, date: Date.new(2026, 10, 8))
+
+    [ "1", "0", "-3", "49", "abc" ].each do |count|
+      plan = RecurringTransaction.build_from_entry(purchase, frequency: "monthly", total_payments: count)
+
+      assert_equal [ "Enter 2 to 48 payments." ], plan.tap(&:validate).errors[:total_payments], count
+    end
+    assert RecurringTransaction.build_from_entry(purchase, frequency: "monthly", total_payments: "3").valid?
+  end
+
+  test "an unknown frequency is a validation error, not an exception" do
+    purchase = create_transaction(account: @credit_card, amount: 100, date: Date.new(2026, 10, 8))
+    plan = RecurringTransaction.build_from_entry(purchase, frequency: "fortnightly", total_payments: "3")
+
+    assert_not plan.valid?
+    assert_equal [ "Choose how often it repeats." ], plan.errors[:frequency]
+    assert_equal purchase.date, plan.start_date
+  end
+
+  test "installments off a card turn the purchase into payment 1 of standard payments" do
+    travel_to Date.new(2026, 10, 8)
+    purchase = create_transaction(account: accounts(:depository), amount: 1000, name: "Sofa", date: Date.new(2026, 8, 20))
+
+    plan = RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 3)
+
+    purchase.reload
+    assert_equal BigDecimal("333.33"), purchase.amount
+    assert purchase.entryable.standard?
+    assert_equal 1, purchase.entryable.installment_number
+    assert_equal BigDecimal("1000"), plan.amount
+    assert_equal Date.new(2026, 8, 20), plan.start_date
+    assert_equal [ 1, 2 ], plan.transactions.order(:installment_number).pluck(:installment_number)
+    assert plan.transactions.all?(&:standard?)
+    assert_equal 1, plan.remaining_payments
+    assert_equal BigDecimal("333.34"), plan.remaining_balance
+    assert_equal Date.new(2026, 10, 20), plan.end_date
+  end
+
+  test "destroying an installments plan off a card keeps its payments" do
+    travel_to Date.new(2026, 10, 8)
+    purchase = create_transaction(account: accounts(:depository), amount: 900, date: Date.new(2026, 8, 20))
+    plan = RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 3)
+
+    assert_no_difference -> { Entry.count } do
+      plan.destroy!
+    end
+    assert_nil purchase.entryable.reload.recurring_transaction_id
   end
 
   private
