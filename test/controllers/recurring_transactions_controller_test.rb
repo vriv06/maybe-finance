@@ -290,6 +290,30 @@ class RecurringTransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "Monthly projection"
   end
 
+  test "the dialog of a weekly charge names its frequency" do
+    plan = families(:dylan_family).recurring_transactions.create!(
+      account: @card, name: "Cleaner", plan_type: "charge", frequency: "weekly", amount: 600, currency: "USD", start_date: Date.new(2026, 10, 12)
+    )
+
+    get recurring_transaction_url(plan), headers: { "Turbo-Frame" => "modal" }
+
+    assert_response :success
+    assert_includes response.body, "$600.00 every week"
+  end
+
+  test "the dialog of installments off a card says how to change the schedule" do
+    purchase = create_transaction(account: accounts(:depository), amount: 1200, name: "Desk", date: Date.new(2026, 10, 1))
+    plan = RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 3)
+
+    get recurring_transaction_url(plan), headers: { "Turbo-Frame" => "modal" }
+
+    assert_response :success
+    assert_includes response.body, "3 payments of $400.00"
+    assert_includes response.body, "every month"
+    assert_includes response.body, "To change payments or dates, stop this plan and add a new one."
+    assert_not_includes response.body, "delete the purchase"
+  end
+
   private
     def create_charge
       families(:dylan_family).recurring_transactions.create!(

@@ -56,7 +56,7 @@
           <% if plan.installments? %>
             <div class="flex items-start gap-3 rounded-lg border border-tertiary p-3">
               <%= icon "lock" %>
-              <p class="text-sm text-secondary">To change installments or dates, delete the purchase and add it again.</p>
+              <p class="text-sm text-secondary"><%= plan.credit_card? ? "To change installments or dates, delete the purchase and add it again." : "To change payments or dates, stop this plan and add a new one." %></p>
             </div>
           <% end %>
 
