@@ -30,7 +30,7 @@ class RecurringTransactionsController < ApplicationController
   def preview
     render partial: "recurring_transactions/preview", locals: {
       plan: build_preview_plan,
-      show_impact: params[:impact] == "1",
+      show_impact: params[:impact] == "1" && params[:entry_id].blank?,
       surface: params[:entry_id].present? ? :container : :inset
     }
   end

@@ -54,6 +54,19 @@ class RecurringTransactionsControllerTest < ActionDispatch::IntegrationTest
     assert_not_includes response.body, "installments of"
   end
 
+  test "preview never shows the projection when converting a saved entry" do
+    entry = create_transaction(account: @card, amount: 3600, date: Date.new(2026, 10, 8))
+
+    get preview_recurring_transactions_url, params: {
+      impact: "1", entry_id: entry.id,
+      entry: { account_id: @card.id, amount: "3600", currency: "USD", date: "2026-10-08" },
+      recurrence: { frequency: "monthly", total_payments: "3" }
+    }, headers: @frame
+
+    assert_response :success
+    assert_not_includes response.body, "Monthly projection"
+  end
+
   test "preview shows the budget impact when asked" do
     family = families(:dylan_family)
     family.budgets.destroy_all
