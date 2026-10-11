@@ -108,7 +108,7 @@ Replaces the budget-impact block in capture.
 - `create_from_entry!` / `build_from_entry`:
   - accept `frequency` and `total_payments`, and ignore any client `plan_type`;
   - credit card vs other account as described in §1;
-  - installments `start_date` = entry date + 1 interval;
+  - installments `start_date` = entry date + 1 interval on a credit card (the purchase stays whole); on other accounts the entry date (the purchase is payment 1);
   - charge `start_date` = entry date.
 - Remove the installments-require-credit-card validation and the `:installments_credit_only` error. Eligibility rules otherwise unchanged: transfer, linked, not standard, income, manual account, foreign currency.
 - `upcoming(through:)`, `generate_due!`, `remaining_*` and `end_date` all work through `occurrence_date`, so they become frequency-aware automatically. `Family::RecurringCommitments` and the budget calculations need no change beyond that.
