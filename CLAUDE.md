@@ -49,6 +49,19 @@ ALWAYS run these commands before opening a pull request:
 
 Only proceed with pull request creation if ALL checks pass.
 
+## Deploy After Merging to Main
+
+Production is self-hosted on this machine: compose project `maybe-finance`, running from the separate checkout `~/Developer/personal/maybe-finance` (branch `main`) with the image `maybe-finance:local`. Merging to `main` does NOT update it by itself.
+
+Whenever you merge into `main` (only when the user asked for the merge):
+1. Run the Pre-Pull Request checks above first; merge only if they pass.
+2. Push `main`, then run `bin/deploy-production` from this repo. It backs up the production database to `~/maybe-backups/`, fast-forwards the production checkout, rebuilds the image, recreates web and worker, and waits for `/up`. Pending migrations run automatically on container start (`db:prepare`); this is the one sanctioned exception to "Do not automatically run migrations".
+3. Report the code range deployed, the schema version, and the backup path. If the script fails, stop, show its output, and tell the user how to restore the backup (the command is in the script header). Never retry with steps skipped.
+
+Dev environment rules (never confuse it with production):
+- The dev/test app is compose project `maybe-finance-dev` on port 3001. Always pass `-p maybe-finance-dev`.
+- Always build dev images with `-f docs/dev/compose.test-db.yaml` (tags `maybe-finance:dev`). A plain build overwrites `maybe-finance:local`, which production uses.
+
 ## General Development Rules
 
 ### Authentication Context
