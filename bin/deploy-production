@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# Deploys main to the self-hosted production instance on this machine.
+#
+# Production is the compose project "maybe-finance", running from a separate checkout
+# (PROD_DIR, on branch main) with the image maybe-finance:local. The web container runs
+# `bin/rails db:prepare` on start, so pending migrations are applied when it restarts.
+#
+# Steps: backup the production database -> fast-forward the checkout to origin/main ->
+# rebuild the image -> recreate web and worker -> wait for /up -> print the schema version.
+#
+# Restore a backup if something goes wrong:
+#   docker exec -i maybe-finance-db-1 sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists' < <backup file>
+set -euo pipefail
+
+PROD_DIR="${PROD_DIR:-$HOME/Developer/personal/maybe-finance}"
+BACKUP_DIR="${BACKUP_DIR:-$HOME/maybe-backups}"
+COMPOSE=(docker compose -p maybe-finance -f compose.yaml)
+
+cd "$PROD_DIR"
+
+branch="$(git rev-parse --abbrev-ref HEAD)"
+if [ "$branch" != "main" ]; then
+  echo "Production checkout is on '$branch', not main. Aborting." >&2
+  exit 1
+fi
+
+git fetch origin main
+if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ]; then
+  echo "Production is already at origin/main ($(git rev-parse --short HEAD)). Nothing to deploy."
+  exit 0
+fi
+
+mkdir -p "$BACKUP_DIR"
+backup="$BACKUP_DIR/maybe-$(date +%Y%m%d-%H%M%S).dump"
+echo "Backing up the production database to $backup"
+"${COMPOSE[@]}" exec -T db sh -c 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Fc' > "$backup"
+if [ ! -s "$backup" ]; then
+  echo "Backup is empty. Aborting before touching production." >&2
+  exit 1
+fi
+
+before="$(git rev-parse --short HEAD)"
+# --ff-only refuses to merge, so local changes to tracked files (e.g. compose.yaml) are never overwritten
+git pull --ff-only origin main
+echo "Code: $before -> $(git rev-parse --short HEAD)"
+
+"${COMPOSE[@]}" build web
+"${COMPOSE[@]}" up -d web worker
+
+echo "Waiting for the app to answer /up"
+for _ in $(seq 1 60); do
+  if "${COMPOSE[@]}" exec -T web sh -c 'curl -fsS -o /dev/null http://localhost:3000/up' 2>/dev/null; then
+    echo "App is up."
+    "${COMPOSE[@]}" exec -T db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -Atc "select max(version) from schema_migrations"' | sed 's/^/Schema version: /'
+    echo "Backup kept at $backup"
+    exit 0
+  fi
+  sleep 2
+done
+
+echo "The app did not answer /up within 2 minutes. Check: ${COMPOSE[*]} logs web" >&2
+echo "Backup is at $backup" >&2
+exit 1
