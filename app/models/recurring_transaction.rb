@@ -219,8 +219,9 @@ class RecurringTransaction < ApplicationRecord
   end
 
   # Occurrences that saving this plan adds with past dates (payment 1 is the source transaction unless it's a card purchase, whose installment 1 is generated)
+  # Payments dated before today that get created with their original dates (today's payment isn't "past")
   def backfill_count(as_of: family.today)
-    upcoming(through: as_of).count { |occurrence| !source_is_first_payment? || occurrence.number > 1 }
+    upcoming(through: as_of - 1.day).count { |occurrence| !source_is_first_payment? || occurrence.number > 1 }
   end
 
   # The day a finished plan stopped: when it was stopped, or its last payment

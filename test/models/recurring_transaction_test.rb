@@ -337,9 +337,17 @@ class RecurringTransactionTest < ActiveSupport::TestCase
     charge = RecurringTransaction.build_from_entry(purchase, frequency: "monthly")
     other_installments = RecurringTransaction.build_from_entry(other, frequency: "monthly", total_payments: 6)
 
-    assert_equal 4, card_installments.backfill_count  # Jul 8 (installment 1), Aug 8, Sep 8, Oct 8
-    assert_equal 3, charge.backfill_count             # Jul 8 is the purchase itself
-    assert_equal 3, other_installments.backfill_count # Jul 8 is payment 1
+    # Oct 8 is today, so it isn't a past payment
+    assert_equal 3, card_installments.backfill_count  # Jul 8 (installment 1), Aug 8, Sep 8
+    assert_equal 2, charge.backfill_count             # Aug 8, Sep 8 (Jul 8 is the purchase itself)
+    assert_equal 2, other_installments.backfill_count # Aug 8, Sep 8 (Jul 8 is payment 1)
+  end
+
+  test "a purchase made today has no past payments" do
+    travel_to Date.new(2026, 10, 8)
+    purchase = create_transaction(account: @credit_card, amount: 3000, date: Date.new(2026, 10, 8))
+
+    assert_equal 0, RecurringTransaction.build_from_entry(purchase, frequency: "monthly", total_payments: 6).backfill_count
   end
 
   test "ended_on and monthly_amount describe the plan" do
