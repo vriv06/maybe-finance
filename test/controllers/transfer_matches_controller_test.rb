@@ -39,4 +39,17 @@ class TransferMatchesControllerTest < ActionDispatch::IntegrationTest
     assert_redirected_to transactions_url
     assert_equal "Transfer created", flash[:notice]
   end
+
+  test "explains instead of failing when the transaction belongs to a recurring payment" do
+    installment = create_transaction(amount: 100, account: accounts(:credit_card), kind: "installment")
+
+    assert_no_difference "Transfer.count" do
+      post transaction_transfer_match_path(installment), params: {
+        transfer_match: { method: "new", target_account_id: accounts(:depository).id }
+      }
+    end
+
+    assert_redirected_to transactions_url
+    assert_equal "This is part of a recurring payment, so it can't be a transfer.", flash[:alert]
+  end
 end

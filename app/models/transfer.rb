@@ -11,6 +11,7 @@ class Transfer < ApplicationRecord
   validate :transfer_has_opposite_amounts
   validate :transfer_within_date_range
   validate :transfer_has_same_family
+  validate :transfer_excludes_installment_plan_transactions
 
   class << self
     def kind_for_account(account)
@@ -126,6 +127,12 @@ class Transfer < ApplicationRecord
       else
         # For different currencies, just check the signs are opposite
         errors.add(:base, "Must have opposite amounts") unless inflow_amount.negative? && outflow_amount.positive?
+      end
+    end
+
+    def transfer_excludes_installment_plan_transactions
+      if [ inflow_transaction, outflow_transaction ].compact.any?(&:plan_locked?)
+        errors.add(:base, "This is part of a recurring payment, so it can't be a transfer.")
       end
     end
 

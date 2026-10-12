@@ -8,11 +8,14 @@ class Entry < ApplicationRecord
   belongs_to :import, optional: true
 
   delegated_type :entryable, types: Entryable::TYPES, dependent: :destroy
+  # Runs after the entryable is destroyed. Account cascades skip it: they destroy every entry and plan anyway.
+  after_destroy :destroy_installment_plan, if: :msi_purchase_with_plan?, unless: :destroyed_by_association
   accepts_nested_attributes_for :entryable
 
   validates :date, :name, :amount, :currency, presence: true
   validates :date, uniqueness: { scope: [ :account_id, :entryable_type ] }, if: -> { valuation? }
   validates :date, comparison: { greater_than: -> { min_supported_date } }
+  validate :plan_amount_unchanged, on: :update
 
   scope :visible, -> {
     joins(:account).where(accounts: { status: [ "draft", "active" ] })
@@ -96,4 +99,25 @@ class Entry < ApplicationRecord
       all.size
     end
   end
+
+  private
+    # Plan-owned rows (installments, the card purchase, payments of installments off a card) keep the amount the plan set
+    def plan_amount_unchanged
+      return unless transaction? && will_save_change_to_amount?
+
+      if entryable.kind_in_database == "msi_purchase"
+        errors.add(:amount, "To change it, delete this purchase and add it again.")
+      elsif entryable.plan_locked?
+        errors.add(:amount, "Set by the plan.")
+      end
+    end
+
+    def msi_purchase_with_plan?
+      transaction? && entryable.msi_purchase? && entryable.recurring_transaction_id.present?
+    end
+
+    # Deleting an MSI purchase removes its debt, so its plan and installments go with it
+    def destroy_installment_plan
+      RecurringTransaction.find_by(id: entryable.recurring_transaction_id)&.destroy!
+    end
 end

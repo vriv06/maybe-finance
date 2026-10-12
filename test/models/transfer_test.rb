@@ -26,6 +26,16 @@ class TransferTest < ActiveSupport::TestCase
     end
   end
 
+  test "transfer cannot include installment plan transactions on either side" do
+    outflow_entry = create_transaction(date: Date.current, account: accounts(:credit_card), amount: 500, kind: "msi_purchase")
+    inflow_entry = create_transaction(date: Date.current, account: accounts(:credit_card), amount: -500, kind: "installment")
+    regular_out = create_transaction(date: Date.current, account: accounts(:depository), amount: 500)
+    regular_in = create_transaction(date: Date.current, account: accounts(:depository), amount: -500)
+
+    assert_not Transfer.new(inflow_transaction: regular_in.transaction, outflow_transaction: outflow_entry.transaction).valid?
+    assert_not Transfer.new(inflow_transaction: inflow_entry.transaction, outflow_transaction: regular_out.transaction).valid?
+  end
+
   test "transfer cannot have 2 transactions from the same account" do
     outflow_entry = create_transaction(date: Date.current, account: accounts(:depository), amount: 500)
     inflow_entry = create_transaction(date: 1.day.ago.to_date, account: accounts(:depository), amount: -500)

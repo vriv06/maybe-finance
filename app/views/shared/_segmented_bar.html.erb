@@ -1,0 +1,12 @@
+<%# locals: (segments:, class: nil) %>
+<%# Maybe's budget bar: rounded segments separated by a gap, the unfilled remainder as an inset segment. segments: [[css_class, percent], ...] %>
+<% segments = segments.select { |_, percent| percent.to_d.positive? } %>
+<% remainder = [ 100 - segments.sum { |_, percent| percent.to_d }, 0 ].max.round(2) %>
+<div class="flex h-1.5 gap-1 <%= local_assigns[:class] %>" aria-hidden="true">
+  <% segments.each do |css_class, percent| %>
+    <div class="rounded-md h-1.5 <%= css_class %>" style="width: <%= percent.to_d.round(2).to_f %>%"></div>
+  <% end %>
+  <% if remainder.positive? %>
+    <div class="rounded-md h-1.5 bg-surface-inset" style="width: <%= remainder.to_f %>%"></div>
+  <% end %>
+</div>

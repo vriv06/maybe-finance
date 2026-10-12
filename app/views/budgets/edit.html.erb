@@ -41,13 +41,19 @@
         <% end %>
 
         <% if @previous_budget&.initialized? %>
+          <% from_previous_month = @previous_budget.to_param == @budget.previous_budget_param %>
           <div class="border border-tertiary rounded-lg p-3 flex">
             <%= icon "sparkles" %>
             <div class="ml-2 space-y-1 text-sm">
-              <h4 class="text-primary">Autofill budget from previous month</h4>
-              <p class="text-secondary">
-                Copies <%= @previous_budget.name %>'s income, spending, and category amounts as a starting point. You can adjust anything after.
-              </p>
+              <% if from_previous_month %>
+                <h4 class="text-primary">Autofill budget from previous month</h4>
+                <p class="text-secondary">
+                  Copies <%= @previous_budget.name %>'s income, spending, and category amounts as a starting point. You can adjust anything after.
+                </p>
+              <% else %>
+                <h4 class="text-primary">Start from your <%= @previous_budget.name %> budget</h4>
+                <p class="text-secondary">Copies <%= @previous_budget.name %>'s budget</p>
+              <% end %>
             </div>
 
             <%= render DS::Toggle.new(

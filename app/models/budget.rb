@@ -2,6 +2,8 @@ class Budget < ApplicationRecord
   include Monetizable
 
   PARAM_DATE_FORMAT = "%b-%Y"
+  FUTURE_CYCLES_LIMIT = 12
+  ProjectionCategory = Data.define(:category, :amount, :estimated)
 
   belongs_to :family
 
@@ -12,7 +14,8 @@ class Budget < ApplicationRecord
 
   monetize :budgeted_spending, :expected_income, :allocated_spending,
            :actual_spending, :available_to_spend, :available_to_allocate,
-           :estimated_spending, :estimated_income, :actual_income, :remaining_expected_income
+           :estimated_spending, :estimated_income, :actual_income, :remaining_expected_income,
+           :committed_spending, :budget_basis, :commitments_overage
 
   class << self
     def date_to_param(date)
@@ -31,9 +34,23 @@ class Budget < ApplicationRecord
 
     def budget_date_valid?(date, family:)
       start_date, end_date = family.cycle_range_containing(date)
-      _, current_cycle_end = family.cycle_range_containing(Date.current)
 
-      start_date >= oldest_valid_budget_date(family) && end_date <= current_cycle_end
+      start_date >= oldest_valid_budget_date(family) && end_date <= latest_valid_budget_end_date(family)
+    end
+
+    # End of the furthest month that can be planned: the current one plus FUTURE_CYCLES_LIMIT
+    def latest_valid_budget_end_date(family)
+      cycle_end = family.cycle_range_containing(Date.current).last
+      FUTURE_CYCLES_LIMIT.times { cycle_end = family.cycle_range_containing(cycle_end + 1.day).last }
+      cycle_end
+    end
+
+    # The month's budget if it was ever created, otherwise an unsaved one (never bootstraps or saves)
+    def for_cycle(family, date)
+      start_date, end_date = family.cycle_range_containing(date)
+
+      family.budgets.find_by(start_date: start_date, end_date: end_date) ||
+        Budget.new(family_id: family.id, start_date: start_date, end_date: end_date, currency: family.currency)
     end
 
     def find_or_bootstrap(family, start_date:)
@@ -136,6 +153,19 @@ class Budget < ApplicationRecord
     [ start_date, end_date ] == family.cycle_range_containing(Date.current)
   end
 
+  def future?
+    start_date > family.today
+  end
+
+  def past?
+    end_date < family.today
+  end
+
+  # The latest month before this one that has a spending budget set up
+  def latest_initialized_budget_before
+    family.budgets.where("end_date < ?", start_date).where.not(budgeted_spending: nil).order(end_date: :desc).first
+  end
+
   def previous_budget_param
     previous_month_date = end_date.prev_month.beginning_of_month
     return nil unless self.class.budget_date_valid?(previous_month_date, family: family)
@@ -143,8 +173,10 @@ class Budget < ApplicationRecord
     self.class.date_to_param(previous_month_date)
   end
 
-  # The prior month's Budget record, if one was ever created (nil otherwise -- this does not bootstrap one)
+  # The budget to copy from. For a future month it's the latest one set up (the months in
+  # between are usually empty); otherwise the prior month's record, if any (never bootstraps one)
   def previous_budget
+    return latest_initialized_budget_before if future?
     return nil unless previous_budget_param
 
     prev_start, prev_end = family.cycle_range_containing(end_date.prev_month.beginning_of_month)
@@ -165,8 +197,6 @@ class Budget < ApplicationRecord
   end
 
   def next_budget_param
-    return nil if current?
-
     next_month_date = end_date.next_month.beginning_of_month
     return nil unless self.class.budget_date_valid?(next_month_date, family: family)
 
@@ -197,11 +227,15 @@ class Budget < ApplicationRecord
     income_statement.median_expense(interval: "month")
   end
 
+  # Future months have no real spending yet: what recurring payments commit takes its place
+  # everywhere spending is shown (donut, summary, category rows). This is the only switch.
   def actual_spending
-    expense_totals.total
+    future? ? committed_spending : expense_totals.total
   end
 
   def budget_category_actual_spending(budget_category)
+    return committed_spending_for(budget_category) if future?
+
     expense_totals.category_totals.find { |ct| ct.category.id == budget_category.category.id }&.total || 0
   end
 
@@ -277,7 +311,91 @@ class Budget < ApplicationRecord
     remaining_expected_income.abs / expected_income.to_f * 100
   end
 
+  # =============================================================================
+  # Recurring commitments: what recurring payments already take from this month
+  # =============================================================================
+  def recurring_commitments
+    @recurring_commitments ||= family.recurring_commitments(start_date: start_date, end_date: end_date)
+  end
+
+  def committed_spending
+    recurring_commitments.total
+  end
+
+  def committed_spending_for(budget_category)
+    recurring_commitments.total_for(budget_category.category)
+  end
+
+  # The budget commitments are compared with: this one once set up, otherwise (current and
+  # future months only) the latest set-up budget before it
+  def basis_budget
+    return @basis_budget if defined?(@basis_budget)
+
+    @basis_budget = if initialized?
+      self
+    elsif past?
+      nil
+    else
+      latest_initialized_budget_before
+    end
+  end
+
+  def budget_basis
+    basis_budget&.budgeted_spending
+  end
+
+  def uses_reference_budget?
+    basis_budget.present? && basis_budget != self
+  end
+
+  def commitments_over_budget?
+    budget_basis.present? && budget_basis.positive? && committed_spending > budget_basis
+  end
+
+  def commitments_overage
+    commitments_over_budget? ? committed_spending - budget_basis : BigDecimal("0")
+  end
+
+  # Whole percent of the basis; rounded up once over so it never reads "100%" while over budget
+  def commitments_percent
+    return nil unless budget_basis&.positive?
+
+    ratio = committed_spending / budget_basis * 100
+    commitments_over_budget? ? ratio.ceil : ratio.floor
+  end
+
+  # =============================================================================
+  # Monthly projection: category spending recurring payments don't already cover
+  # =============================================================================
+  # Current month: real spending per category. Future months: each category's monthly median, the
+  # "avg" budget rows show. Rows linked to a plan are left out because they are commitments.
+  def category_spend_for_projection
+    @category_spend_for_projection ||= (future? ? average_category_spend : actual_category_spend)
+      .select { |row| row.amount.positive? }
+      .sort_by { |row| -row.amount }
+  end
+
   private
+    def actual_category_spend
+      income_statement.expense_totals(period: period, exclude_recurring: true).category_totals
+        .reject { |category_total| category_total.category.subcategory? }
+        .map { |category_total| ProjectionCategory.new(category: category_total.category, amount: category_total.total.to_d, estimated: false) }
+    end
+
+    # A parent includes its subcategories, like the budget's category rows
+    def average_category_spend
+      categories = family.categories.expenses.to_a
+
+      [ *categories.reject(&:subcategory?), family.categories.uncategorized ].map do |category|
+        children = category.id ? categories.select { |child| child.parent_id == category.id } : []
+        amount = [ category, *children ].sum(BigDecimal("0")) do |member|
+          income_statement.median_expense(category: member, exclude_recurring: true).to_d
+        end
+
+        ProjectionCategory.new(category: category, amount: amount, estimated: true)
+      end
+    end
+
     def income_statement
       @income_statement ||= family.income_statement
     end

@@ -8,6 +8,7 @@ class Account < ApplicationRecord
 
   has_many :import_mappings, as: :mappable, dependent: :destroy, class_name: "Import::Mapping"
   has_many :entries, dependent: :destroy
+  has_many :recurring_transactions, dependent: :destroy
   has_many :transactions, through: :entries, source: :entryable, source_type: "Transaction"
   has_many :valuations, through: :entries, source: :entryable, source_type: "Valuation"
   has_many :trades, through: :entries, source: :entryable, source_type: "Trade"
@@ -71,6 +72,10 @@ class Account < ApplicationRecord
       account.sync_later
       account
     end
+  end
+
+  def recurring_commitments
+    RecurringCommitments.new(self)
   end
 
   def institution_domain

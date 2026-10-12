@@ -1,0 +1,47 @@
+<%# locals: (impact:, title:) %>
+
+<% over_text = "text-red-700 theme-dark:text-red-400" %>
+<section <%= title ? 'aria-labelledby="recurring-impact-title"'.html_safe : 'aria-label="Monthly projection"'.html_safe %> class="rounded-lg border border-tertiary p-3 flex flex-col gap-3">
+  <% if title %>
+    <div class="flex items-start gap-2">
+      <%= icon "alert-triangle", size: "sm", color: "current", class: "mt-0.5 #{over_text}" %>
+      <p id="recurring-impact-title" class="text-sm font-medium tabular-nums min-w-0 <%= over_text %>"><%= title %></p>
+    </div>
+  <% end %>
+
+  <ul class="flex flex-col gap-3">
+    <% impact.months.each do |month| %>
+      <% currency = month.budget.currency %>
+      <li class="flex flex-col gap-1.5">
+        <p class="sr-only"><%= budget_impact_month_summary(month) %></p>
+
+        <div class="flex items-center justify-between text-sm tabular-nums" aria-hidden="true">
+          <span class="text-primary font-medium"><%= month.budget.name %></span>
+          <% if month.over? %>
+            <span class="font-medium <%= over_text %>"><%= recurring_money(month.overage, currency) %> over</span>
+          <% else %>
+            <span class="text-secondary"><%= month.percent %>% of budget</span>
+          <% end %>
+        </div>
+
+        <%# Same segmented bar as the budget's; the budget mark overlays it %>
+        <% segments = [ [ "bg-pink-500", month.category_spend ], [ "bg-destructive", month.committed ], [ "bg-inverse", month.purchase ] ].map { |klass, amount| [ klass, impact.width(amount.to_d) ] } %>
+        <div class="relative" aria-hidden="true">
+          <%= render "shared/segmented_bar", segments: segments %>
+          <div class="absolute -top-1 h-4 w-0.5 -translate-x-1/2 rounded-sm bg-current text-secondary" style="left: <%= impact.width(month.basis) %>%"></div>
+        </div>
+
+        <p class="text-xs text-secondary tabular-nums" aria-hidden="true">
+          <%= recurring_money(month.total, currency) %> of <%= recurring_money(month.basis, currency) %> budgeted<% if month.estimated? %> <span>·</span> categories avg<% end %>
+        </p>
+      </li>
+    <% end %>
+  </ul>
+
+  <ul class="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-secondary">
+    <li class="flex items-center gap-1.5"><span class="size-2 rounded-sm bg-pink-500" aria-hidden="true"></span>Monthly expenses</li>
+    <li class="flex items-center gap-1.5"><span class="size-2 rounded-sm bg-destructive" aria-hidden="true"></span>Recurring expenses</li>
+    <li class="flex items-center gap-1.5"><span class="size-2 rounded-sm bg-inverse" aria-hidden="true"></span>This expense</li>
+    <li class="flex items-center gap-1.5"><span class="h-2.5 w-0.5 bg-current" aria-hidden="true"></span>Budget</li>
+  </ul>
+</section>

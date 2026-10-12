@@ -1,0 +1,1219 @@
+<!doctype html>
+<!-- SUPERSEDED 2026-10-08: the visual source of truth is Victor's canvas (https://claude.ai/artifact/1gVBYF2NsiBFS45AoPC1JT, copied in ../canvas/). Kept for history only; do not build from this file. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recurring payments mockups</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.16?plugins=container-queries"></script>
+<script>
+  // Maps Maybe's functional tokens (maybe-design-system.css) onto CSS variables, so the
+  // markup below uses the SAME class names as the Rails views (text-primary, bg-container…).
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: { sans: ['Geist', 'system-ui', 'sans-serif'], mono: ['Geist Mono', 'ui-monospace', 'monospace'] },
+        borderRadius: { md: '8px', lg: '10px', xl: '12px' },
+        colors: {
+          gray: { 25:'#FAFAFA',50:'#F7F7F7',100:'#F0F0F0',200:'#E7E7E7',300:'#CFCFCF',400:'#9E9E9E',500:'#737373',600:'#5C5C5C',700:'#363636',800:'#242424',900:'#171717' },
+        },
+        textColor: {
+          primary: 'var(--text-primary)', secondary: 'var(--text-secondary)', subdued: 'var(--text-subdued)',
+          inverse: 'var(--text-inverse)', warning: 'var(--warning)', destructive: 'var(--destructive)', success: 'var(--success)',
+          'alert-warning': 'var(--aw-fg)', 'alert-error': 'var(--ae-fg)', 'fg-gray': 'var(--fg-gray)'
+        },
+        backgroundColor: {
+          surface: 'var(--bg-surface)', 'surface-inset': 'var(--bg-surface-inset)', container: 'var(--bg-container)',
+          'container-inset': 'var(--bg-container-inset)', inverse: 'var(--bg-inverse)', destructive: 'var(--destructive)',
+          'alert-warning': 'var(--aw-bg)', 'alert-error': 'var(--ae-bg)', 'tab-active': 'var(--tab-active)', 'btn-primary': 'var(--bg-inverse)',
+          'btn-secondary': 'var(--btn-secondary)', 'btn-destructive': 'var(--btn-destructive)'
+        },
+        borderColor: {
+          primary: 'var(--border-primary)', secondary: 'var(--border-secondary)', tertiary: 'var(--border-tertiary)',
+          divider: 'var(--border-tertiary)', destructive: 'var(--destructive)', 'alert-warning': 'var(--aw-border)', 'alert-error': 'var(--ae-border)'
+        },
+        boxShadow: {
+          xs: 'var(--shadow-xs)',
+          'border-xs': 'var(--shadow-xs), 0 0 0 1px var(--ring-50)',
+          'border-lg': 'var(--shadow-lg), 0 0 0 1px var(--ring-50)'
+        }
+      }
+    }
+  }
+</script>
+<style>
+  /* Light = :root. Values copied from app/assets/tailwind/maybe-design-system*.css */
+  :root {
+    color-scheme: light;
+    --text-primary:#171717; --text-secondary:#737373; --text-subdued:#9E9E9E; --text-inverse:#ffffff; --fg-gray:#737373;
+    --bg-surface:#F7F7F7; --bg-surface-inset:#F0F0F0; --bg-container:#ffffff; --bg-container-inset:#F7F7F7; --bg-inverse:#242424;
+    --btn-secondary:#F7F7F7; --btn-destructive:#F13636; --tab-active:#ffffff;
+    --border-primary:rgba(11,11,11,.15); --border-secondary:rgba(11,11,11,.10); --border-tertiary:rgba(11,11,11,.08);
+    --ring-50:rgba(11,11,11,.05); --shadow-xs:0 1px 2px 0 rgba(11,11,11,.06); --shadow-lg:0 12px 16px -4px rgba(11,11,11,.06);
+    --warning:#DC6803; --destructive:#EC2222; --success:#10A861;
+    /* DS::Alert :warning  -> bg-yellow-50 text-yellow-700 border-yellow-200 */
+    --aw-bg:#FFFAEB; --aw-fg:#B54708; --aw-border:#FEDF89;
+    /* DS::Alert :error    -> bg-red-50 text-red-700 border-red-200 */
+    --ae-bg:#FFF1F0; --ae-fg:#C91313; --ae-border:#FEB9B3;
+    --budget-unused-fill:#E7E7E7; --radio:#444CE7;
+  }
+  /* Dark = [data-theme=dark] block of the DS */
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --text-primary:#ffffff; --text-secondary:#9E9E9E; --text-subdued:#5C5C5C; --text-inverse:#171717; --fg-gray:#9E9E9E;
+    --bg-surface:#0B0B0B; --bg-surface-inset:#242424; --bg-container:#171717; --bg-container-inset:#242424; --bg-inverse:#ffffff;
+    --btn-secondary:#363636; --btn-destructive:#ED4E4E; --tab-active:#363636;
+    --border-primary:rgba(255,255,255,.20); --border-secondary:rgba(255,255,255,.15); --border-tertiary:rgba(255,255,255,.10);
+    --ring-50:rgba(255,255,255,.05); --shadow-xs:0 1px 2px 0 rgba(255,255,255,.08); --shadow-lg:0 12px 16px -4px rgba(255,255,255,.08);
+    --warning:#FDB022; --destructive:#ED4E4E; --success:#12B76A;
+    --aw-bg:rgba(122,46,14,.20); --aw-fg:#FDB022; --aw-border:#93370D;
+    --ae-bg:rgba(126,7,7,.20); --ae-fg:#ED4E4E; --ae-border:#A40E0E;
+    --budget-unused-fill:#737373; --radio:#2E90FA;
+  }}
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --text-primary:#ffffff; --text-secondary:#9E9E9E; --text-subdued:#5C5C5C; --text-inverse:#171717; --fg-gray:#9E9E9E;
+    --bg-surface:#0B0B0B; --bg-surface-inset:#242424; --bg-container:#171717; --bg-container-inset:#242424; --bg-inverse:#ffffff;
+    --btn-secondary:#363636; --btn-destructive:#ED4E4E; --tab-active:#363636;
+    --border-primary:rgba(255,255,255,.20); --border-secondary:rgba(255,255,255,.15); --border-tertiary:rgba(255,255,255,.10);
+    --ring-50:rgba(255,255,255,.05); --shadow-xs:0 1px 2px 0 rgba(255,255,255,.08); --shadow-lg:0 12px 16px -4px rgba(255,255,255,.08);
+    --warning:#FDB022; --destructive:#ED4E4E; --success:#12B76A;
+    --aw-bg:rgba(122,46,14,.20); --aw-fg:#FDB022; --aw-border:#93370D;
+    --ae-bg:rgba(126,7,7,.20); --ae-fg:#ED4E4E; --ae-border:#A40E0E;
+    --budget-unused-fill:#737373; --radio:#2E90FA;
+  }
+  body { background: var(--bg-surface); color: var(--text-primary); font-family: Geist, system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+  /* .form-field from the DS (components layer) */
+  .form-field { display:flex; flex-direction:column; gap:4px; position:relative; padding:8px 12px; border-radius:8px; border:1px solid var(--border-secondary); background:var(--bg-container); box-shadow:var(--shadow-xs); width:100%; }
+  .form-field:focus-within { box-shadow: 0 0 0 4px rgba(11,11,11,.10); }
+  .form-field.is-error { border-color: var(--destructive); }
+  .form-field__label { display:block; font-size:12px; line-height:16px; color:var(--text-secondary); }
+  .form-field__input { color:var(--text-primary); background:transparent; border:0; font-size:14px; line-height:20px; padding:0; width:100%; outline:none; }
+  .form-field__input:disabled { color: var(--text-subdued); }
+  input[type=radio] { accent-color: var(--radio); width:16px; height:16px; }
+  details > summary { list-style:none; } details > summary::-webkit-details-marker { display:none; }
+  details[open] .rot-180 { transform: rotate(180deg); } details[open] .rot-90 { transform: rotate(90deg); }
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:4px; border-radius:10px; padding:8px 12px; font-size:14px; font-weight:500; line-height:20px; }
+  .btn:focus-visible, a:focus-visible, summary:focus-visible { outline: 2px solid var(--text-primary); outline-offset: 2px; }
+  .btn-primary { background:var(--bg-inverse); color:var(--text-inverse); }
+  .btn-secondary { background:var(--btn-secondary); color:var(--text-primary); }
+  .btn-outline { border:1px solid var(--border-secondary); color:var(--text-primary); }
+  .btn-outline-destructive { border:1px solid var(--border-secondary); color:var(--destructive); }
+  .btn-destructive { background:var(--btn-destructive); color:var(--text-inverse); }
+  .btn-ghost { color:var(--text-primary); }
+  .btn-sm { padding:4px 8px; border-radius:8px; }
+  .dimmed { opacity:.6; transition: opacity 150ms; }
+  @media (prefers-reduced-motion: reduce) { .dimmed { transition: none; } }
+  /* Mockup chrome only (not part of the design) */
+  .chrome-label { font-family: 'Geist Mono', monospace; font-size: 11px; letter-spacing: .02em; color: var(--text-secondary); }
+  .frame-375 { width: 100%; max-width: 375px; }
+  .col-300 { width: 100%; max-width: 300px; }
+  .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+  [data-lucide] { display:inline-block; }
+  svg.lucide { flex-shrink: 0; }
+  .text-pretty { text-wrap: pretty; }
+</style>
+<body class="min-h-screen">
+
+<!-- ============ Mockup chrome (not UI) ============ -->
+<header class="md:sticky top-0 z-20 bg-container border-b border-tertiary">
+  <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+    <p class="font-medium text-primary">Recurring payments · visual mockups <span class="chrome-label">REV 2 · COPY PASS 3</span></p>
+    <nav class="flex flex-wrap gap-x-3 gap-y-1 text-sm text-secondary" aria-label="Sections">
+      <a class="hover:underline" href="#b1">B1–B2 Capture</a>
+      <a class="hover:underline" href="#b3">B3 Convert</a>
+      <a class="hover:underline" href="#c1">C1 Rows</a>
+      <a class="hover:underline" href="#c2">C2 Card</a>
+      <a class="hover:underline" href="#c3">C3 Dialogs</a>
+      <a class="hover:underline" href="#c4">C4 Budget block</a>
+      <a class="hover:underline" href="#future">Future budgets</a>
+      <a class="hover:underline" href="#contrast">Contrast</a>
+    </nav>
+    <div class="ml-auto flex items-center gap-1 text-sm" role="group" aria-label="Theme">
+      <button class="btn btn-sm btn-outline" data-theme-set="light">Light</button>
+      <button class="btn btn-sm btn-outline" data-theme-set="dark">Dark</button>
+      <button class="btn btn-sm btn-outline" data-theme-set="system">System</button>
+    </div>
+  </div>
+</header>
+
+<main class="max-w-6xl mx-auto px-4 py-8 space-y-16">
+
+  <section class="space-y-2 max-w-3xl">
+    <h1 class="text-2xl font-medium">What you are looking at</h1>
+    <p class="text-sm text-secondary">Static recreations of Maybe screens with the new pieces in place. Every class is a real Maybe design-system class (tokens copied from <code class="font-mono text-xs">maybe-design-system.css</code>); every string comes from the "Kept" tables of the copy doc (pass 3). Today is Oct 8, 2026; budget months run 28 → 27. Grey mono labels like <span class="chrome-label">THIS</span> are annotations, not UI.</p>
+    <p class="text-sm text-secondary">Data: BBVA Azul has 3 installment plans (MacBook Air 12 × $1,250.00, Refrigerador LG 18 × $1,450.00, Sala 6 × $3,500.00) and 2 monthly charges (Netflix $299.00, iCloud+ $52.00). Nu has Viaje Cancún 9 × $2,000.00 and Smart Fit $649.00 from November. Family total from November: $9,200.00. The October 2026 budget is $7,500.00; November and December 2026 have no budget yet.</p>
+  </section>
+
+  <!-- =========================================================== B1 / B2 -->
+  <section id="b1" class="space-y-4 scroll-mt-20">
+    <div>
+      <p class="chrome-label">B1 + B2 · NEW TRANSACTION MODAL · DS::Dialog + DS::Disclosure</p>
+      <h2 class="text-xl font-medium">Capture: one field, not a flow</h2>
+    </div>
+
+    <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3 items-start">
+
+      <!-- 1. Default -->
+      <figure class="space-y-2" data-check="b1-default">
+        <figcaption class="chrome-label">1 · DEFAULT · "DOESN'T REPEAT" CHECKED</figcaption>
+        <div class="bg-container rounded-xl shadow-border-lg p-4 space-y-4 frame-375">
+          <div class="flex items-center justify-between"><h3 class="font-medium text-primary">New transaction</h3><i data-lucide="x" class="w-5 h-5 text-fg-gray"></i></div>
+          <div class="flex bg-surface-inset p-1 rounded-lg"><span class="w-full text-center text-sm font-medium px-2 py-1 rounded-md bg-tab-active text-primary shadow-xs">Expense</span><span class="w-full text-center text-sm font-medium px-2 py-1 text-secondary">Income</span></div>
+          <div class="space-y-2">
+            <label class="form-field"><span class="form-field__label">Description</span><input class="form-field__input" value="iPad Air"></label>
+            <label class="form-field"><span class="form-field__label">Account</span><input class="form-field__input" value="BBVA Azul"></label>
+            <label class="form-field"><span class="form-field__label">Amount</span><input class="form-field__input tabular-nums" value="$ 15,000.00"></label>
+            <label class="form-field"><span class="form-field__label">Category</span><input class="form-field__input" value="Shopping"></label>
+            <label class="form-field"><span class="form-field__label">Date</span><input type="date" class="form-field__input tabular-nums h-5" value="2026-10-08"></label>
+          </div>
+          <details class="group" open>
+            <summary class="px-3 py-2 rounded-xl cursor-pointer flex items-center justify-between bg-surface"><span class="font-medium text-xs uppercase text-secondary">Recurring payment</span><i data-lucide="chevron-down" class="w-5 h-5 text-fg-gray rot-180"></i></summary>
+            <div class="mt-2 space-y-3">
+              <fieldset>
+                <legend class="text-xs text-secondary mb-1">Repeat</legend>
+                <label class="flex items-center gap-2 min-h-11 text-sm text-primary"><input type="radio" name="t1" checked><span>Doesn't repeat</span></label>
+                <label class="flex items-center gap-2 min-h-11 text-sm text-primary"><input type="radio" name="t1"><span>Monthly charge</span></label>
+                <label class="flex items-center gap-2 min-h-11 text-sm text-primary"><input type="radio" name="t1"><span>Installments</span></label>
+              </fieldset>
+            </div>
+          </details>
+          <details class="group">
+            <summary class="px-3 py-2 rounded-xl cursor-pointer flex items-center justify-between bg-surface"><span class="font-medium text-xs uppercase text-secondary">Details</span><i data-lucide="chevron-down" class="w-5 h-5 text-fg-gray"></i></summary>
+          </details>
+          <button class="btn btn-primary w-full">Add transaction</button>
+        </div>
+      </figure>
+
+      <!-- 2. Installments ready -->
+      <figure class="space-y-2 md:col-span-2" data-check="b1-installments">
+        <figcaption class="chrome-label">2 · INSTALLMENTS · SUMMARY READY · DESKTOP MODAL (DS::Dialog md = 550 PX)</figcaption>
+        <div class="bg-container rounded-xl shadow-border-lg p-4 space-y-4 w-full max-w-[550px]">
+          <p class="chrome-label">…MAIN SECTION ABOVE…</p>
+          <details class="group" open>
+            <summary class="px-3 py-2 rounded-xl cursor-pointer flex items-center justify-between bg-surface"><span class="font-medium text-xs uppercase text-secondary">Recurring payment</span><i data-lucide="chevron-down" class="w-5 h-5 text-fg-gray rot-180"></i></summary>
+            <div class="mt-2 space-y-3">
+              <fieldset>
+                <legend class="text-xs text-secondary mb-1">Repeat</legend>
+                <label class="flex items-center gap-2 min-h-11 text-sm text-primary"><input type="radio" name="t2"><span>Doesn't repeat</span></label>
+                <label class="flex items-center gap-2 min-h-11 text-sm text-primary"><input type="radio" name="t2"><span>Monthly charge</span></label>
+                <label class="flex items-center gap-2 min-h-11 text-sm text-primary"><input type="radio" name="t2" checked><span>Installments</span></label>
+              </fieldset>
+              <div class="@container"><div class="grid grid-cols-1 @sm:grid-cols-2 gap-2" data-pair>
+                <label class="form-field"><span class="form-field__label">Number of installments</span><input class="form-field__input tabular-nums h-5" inputmode="numeric" value="12"></label>
+                <label class="form-field"><span class="form-field__label">First payment</span><input type="date" class="form-field__input tabular-nums h-5" value="2026-11-08"></label>
+              </div></div>
+              <div role="status" aria-atomic="true" class="rounded-lg bg-container-inset px-3 py-2 flex items-start gap-2" data-summary>
+                <i data-lucide="credit-card" class="w-4 h-4 text-fg-gray mt-0.5"></i>
+                <p class="text-sm tabular-nums min-w-0">
+                  <span class="block text-primary font-medium">12 installments of $1,250.00</span><span class="sr-only">, </span>
+                  <span class="block text-secondary">last on Oct 8, 2027</span>
+                </p>
+              </div>
+            </div>
+          </details>
+          <button class="btn btn-primary w-full">Add transaction</button>
+        </div>
+      </figure>
+
+      <!-- 3. Summary states -->
+      <figure class="space-y-2" data-check="b2-states">
+        <figcaption class="chrome-label">3 · SUMMARY STATES (ALWAYS: FIGURES LINE 1, DATE LINE 2)</figcaption>
+        <div class="bg-container rounded-xl shadow-border-lg p-4 space-y-3 frame-375">
+          <p class="chrome-label">RECALCULATING (OPACITY-60, 150 MS; INSTANT WITH REDUCED MOTION)</p>
+          <div class="rounded-lg bg-container-inset px-3 py-2 flex items-start gap-2 dimmed" aria-busy="true">
+            <i data-lucide="credit-card" class="w-4 h-4 text-fg-gray mt-0.5"></i>
+            <p class="text-sm tabular-nums min-w-0"><span class="block text-primary font-medium">6 installments of $2,500.00</span><span class="block text-secondary">last on Jan 8, 2027</span></p>
+          </div>
+          <p class="chrome-label">PAST PURCHASE (JUL 8) · READY</p>
+          <div class="rounded-lg bg-container-inset px-3 py-2 flex items-start gap-2">
+            <i data-lucide="credit-card" class="w-4 h-4 text-fg-gray mt-0.5"></i>
+            <div class="text-sm tabular-nums min-w-0">
+              <p class="text-primary font-medium">12 installments of $1,250.00</p>
+              <p class="text-secondary">last on Jul 8, 2027</p>
+              <p class="text-secondary mt-1">3 already due. They'll be added with their original dates.</p>
+            </div>
+          </div>
+          <p class="chrome-label">UNEVEN LAST INSTALLMENT</p>
+          <div class="rounded-lg bg-container-inset px-3 py-2 flex items-start gap-2">
+            <i data-lucide="credit-card" class="w-4 h-4 text-fg-gray mt-0.5"></i>
+            <p class="text-sm tabular-nums min-w-0"><span class="block text-primary font-medium">6 installments of $1,666.67</span><span class="block text-secondary">last one $1,666.65 on Mar 27, 2027</span></p>
+          </div>
+          <p class="chrome-label">MISSING DATA → REGION EMPTY (NOTHING RENDERED)</p>
+          <p class="chrome-label">PREVIEW FAILED</p>
+          <div class="rounded-lg bg-container-inset px-3 py-2"><p class="text-sm text-secondary">We couldn't calculate this. You can still save.</p></div>
+        </div>
+      </figure>
+
+      <!-- 4. Monthly charge -->
+      <figure class="space-y-2" data-check="b1-charge">
+        <figcaption class="chrome-label">4 · MONTHLY CHARGE · NO END DATE</figcaption>
+        <div class="bg-container rounded-xl shadow-border-lg p-4 space-y-3 frame-375">
+          <p class="chrome-label">SPOTIFY · $199.00 · DATE JUN 30, 2026</p>
+          <fieldset>
+            <legend class="text-xs text-secondary mb-1">Repeat</legend>
+            <label class="flex items-center gap-2 min-h-11 text-sm text-primary"><input type="radio" name="t4"><span>Doesn't repeat</span></label>
+            <label class="flex items-center gap-2 min-h-11 text-sm text-primary"><input type="radio" name="t4" checked><span>Monthly charge</span></label>
+            <label class="flex items-center gap-2 min-h-11 text-sm text-primary"><input type="radio" name="t4"><span>Installments</span></label>
+          </fieldset>
+          <label class="form-field">
+            <span class="form-field__label">Ends after</span>
+            <span class="flex items-center gap-2"><input class="form-field__input tabular-nums w-16" inputmode="numeric" placeholder="—"><span class="text-sm text-secondary">payments</span></span>
+          </label>
+          <div class="rounded-lg bg-container-inset px-3 py-2 flex items-start gap-2">
+            <i data-lucide="repeat" class="w-4 h-4 text-fg-gray mt-0.5"></i>
+            <div class="text-sm tabular-nums min-w-0">
+              <p class="text-primary font-medium">$199.00 every month</p>
+              <p class="text-secondary">no end date</p>
+              <p class="text-secondary mt-1">3 already due. They'll be added with their original dates.</p>
+            </div>
+          </div>
+          <p class="chrome-label">WITH AN END</p>
+          <div class="rounded-lg bg-container-inset px-3 py-2 flex items-start gap-2">
+            <i data-lucide="repeat" class="w-4 h-4 text-fg-gray mt-0.5"></i>
+            <p class="text-sm tabular-nums min-w-0"><span class="block text-primary font-medium">$199.00 every month</span><span class="block text-secondary">12 payments <span aria-hidden="true">·</span> last on Sep 15, 2027</span></p>
+          </div>
+        </div>
+      </figure>
+
+      <!-- 5. Error -->
+      <figure class="space-y-2 md:col-span-2" data-check="b1-error">
+        <figcaption class="chrome-label">5 · SUBMIT ERROR · DESKTOP MODAL 550 PX · TEXT + BORDER</figcaption>
+        <div class="bg-container rounded-xl shadow-border-lg p-4 space-y-3 w-full max-w-[550px]">
+          <div class="@container"><div class="grid grid-cols-1 @sm:grid-cols-2 gap-2" data-pair>
+            <div class="flex flex-col gap-1">
+              <label class="form-field is-error"><span class="form-field__label">Number of installments</span><input class="form-field__input tabular-nums h-5" aria-invalid="true" value="1"></label>
+              <p class="text-xs text-destructive flex items-start gap-1"><i data-lucide="circle-alert" class="w-3 h-3 mt-0.5"></i><span>Enter 2 to 48 installments.</span></p>
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="form-field is-error"><span class="form-field__label">First payment</span><input type="date" class="form-field__input tabular-nums h-5" aria-invalid="true" value="2026-09-30"></label>
+              <p class="text-xs text-destructive flex items-start gap-1"><i data-lucide="circle-alert" class="w-3 h-3 mt-0.5"></i><span>The first payment can't be before Oct 8, 2026.</span></p>
+            </div>
+          </div></div>
+          <p class="chrome-label">MESSAGES SIT UNDER THEIR FIELD, LEFT EDGE = FIELD EDGE; FIELDS KEEP SHARED TOP</p>
+        </div>
+      </figure>
+    </div>
+  </section>
+
+  <!-- =========================================================== B3 -->
+  <section id="b3" class="space-y-4 scroll-mt-20">
+    <div>
+      <p class="chrome-label">B3 · TRANSACTION DRAWER → SETTINGS · INLINE STEP, NO MODAL</p>
+      <h2 class="text-xl font-medium">Convert an existing purchase</h2>
+    </div>
+    <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-3 items-start">
+
+      <figure class="space-y-2" data-check="b3-closed">
+        <figcaption class="chrome-label">1 · CLOSED (FIRST ROW OF SETTINGS)</figcaption>
+        <div class="bg-container rounded-xl shadow-border-lg p-4 frame-375 space-y-2">
+          <header class="space-y-1 mb-2"><h3 class="font-medium"><span class="text-2xl tabular-nums">-$26,100.00</span> <span class="text-lg text-secondary">MXN</span></h3><span class="text-sm text-secondary">July 20, 2026</span></header>
+          <div class="px-3 py-2 rounded-xl flex items-center justify-between bg-surface"><span class="font-medium text-xs uppercase text-secondary">Settings</span><i data-lucide="chevron-down" class="w-5 h-5 text-fg-gray rotate-180"></i></div>
+          <div class="flex items-center justify-between gap-4 p-3">
+            <h4 class="text-sm text-primary">Recurring payment</h4>
+            <button class="btn btn-outline" aria-label="Set up recurring payment"><i data-lucide="repeat" class="w-4 h-4 text-fg-gray"></i>Set up</button>
+          </div>
+          <div class="flex items-center justify-between gap-4 p-3">
+            <div class="text-sm space-y-1"><h4 class="text-primary">Exclude</h4><p class="text-secondary">Excluded transactions will be removed from budgeting calculations and reports.</p></div>
+            <span class="w-9 h-5 rounded-full bg-surface-inset border border-secondary shrink-0"></span>
+          </div>
+        </div>
+      </figure>
+
+      <figure class="space-y-2" data-check="b3-default">
+        <figcaption class="chrome-label">2 · OPENED · "DOESN'T REPEAT" CHECKED · REVIEW DISABLED</figcaption>
+        <div class="bg-container rounded-xl shadow-border-lg p-4 frame-375">
+          <div class="p-3">
+            <h4 class="text-sm text-primary">Recurring payment</h4>
+            <div class="mt-3 rounded-lg bg-container-inset p-3 space-y-3">
+              <fieldset>
+                <legend class="text-xs text-secondary mb-1">Repeat</legend>
+                <label class="flex items-center gap-2 min-h-11 text-sm text-primary"><input type="radio" name="b3a" checked><span>Doesn't repeat</span></label>
+                <label class="flex items-center gap-2 min-h-11 text-sm text-primary"><input type="radio" name="b3a"><span>Monthly charge</span></label>
+                <label class="flex items-center gap-2 min-h-11 text-sm text-primary"><input type="radio" name="b3a"><span>Installments</span></label>
+              </fieldset>
+              <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                <button class="btn btn-ghost">Cancel</button>
+                <button class="btn btn-primary" disabled aria-disabled="true" style="opacity:1;background:#737373">Review</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <figure class="space-y-2 md:col-span-2" data-check="b3-fields">
+        <figcaption class="chrome-label">3 · INSTALLMENTS CHOSEN · DRAWER WIDTH 550 PX</figcaption>
+        <div class="bg-container rounded-xl shadow-border-lg p-4 w-full max-w-[550px]">
+          <div class="p-3">
+            <h4 class="text-sm text-primary">Recurring payment</h4>
+            <div class="mt-3 rounded-lg bg-container-inset p-3 space-y-3">
+              <fieldset>
+                <legend class="text-xs text-secondary mb-1">Repeat</legend>
+                <label class="flex items-center gap-2 min-h-11 text-sm text-primary"><input type="radio" name="b3b"><span>Doesn't repeat</span></label>
+                <label class="flex items-center gap-2 min-h-11 text-sm text-primary"><input type="radio" name="b3b"><span>Monthly charge</span></label>
+                <label class="flex items-center gap-2 min-h-11 text-sm text-primary"><input type="radio" name="b3b" checked><span>Installments</span></label>
+              </fieldset>
+              <div class="@container"><div class="grid grid-cols-1 @sm:grid-cols-2 gap-2" data-pair>
+                <label class="form-field"><span class="form-field__label">Number of installments</span><input class="form-field__input tabular-nums h-5" value="18"></label>
+                <label class="form-field"><span class="form-field__label">First payment</span><input type="date" class="form-field__input tabular-nums h-5" value="2026-08-20"></label>
+              </div></div>
+              <div class="rounded-lg bg-container px-3 py-2 flex items-start gap-2 shadow-border-xs" data-summary>
+                <i data-lucide="credit-card" class="w-4 h-4 text-fg-gray mt-0.5"></i>
+                <div class="text-sm tabular-nums min-w-0">
+                  <p class="text-primary font-medium">18 installments of $1,450.00</p>
+                  <p class="text-secondary">last on Jan 20, 2028</p>
+                  <p class="text-secondary mt-1">2 already due. They'll be added with their original dates.</p>
+                </div>
+              </div>
+              <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                <button class="btn btn-ghost">Cancel</button>
+                <button class="btn btn-primary" aria-label="Review recurring payment">Review</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <figure class="space-y-2" data-check="b3-confirm">
+        <figcaption class="chrome-label">4 · CONFIRMATION (FOCUS ON HEADING)</figcaption>
+        <div class="bg-container rounded-xl shadow-border-lg p-4 frame-375">
+          <div class="p-3">
+            <h4 class="text-sm text-primary">Recurring payment</h4>
+            <div class="mt-3 rounded-lg border border-tertiary p-3 space-y-3">
+              <h4 tabindex="-1" class="text-sm font-medium text-primary tabular-nums rounded" style="outline:2px solid var(--text-primary);outline-offset:2px">Split $26,100.00 into 18 installments</h4>
+              <ul class="list-disc pl-5 space-y-1 text-sm text-secondary tabular-nums">
+                <li>Your card balance stays the same.</li>
+                <li>Adds 2 past installments with their original dates. Past budgets will change.</li>
+              </ul>
+              <div class="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
+                <button class="btn btn-outline">Cancel</button>
+                <button class="btn btn-primary">Split into 18 installments</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <figure class="space-y-2">
+        <figcaption class="chrome-label">5 · BLOCK ERROR · DS::Alert :error · role=alert</figcaption>
+        <div class="bg-container rounded-xl shadow-border-lg p-4 frame-375">
+          <div role="alert" class="flex items-start gap-3 p-4 rounded-lg border bg-alert-error text-alert-error border-alert-error">
+            <i data-lucide="circle-x" class="w-4 h-4 shrink-0 mt-0.5"></i>
+            <div class="flex-1 text-sm">We couldn't set this up. Nothing changed. Try again.</div>
+          </div>
+        </div>
+      </figure>
+
+      <figure class="space-y-2">
+        <figcaption class="chrome-label">6 · ONE-TIME EXPENSE (NO BUTTON)</figcaption>
+        <div class="bg-container rounded-xl shadow-border-lg p-4 frame-375">
+          <div class="p-3 text-sm space-y-1"><h4 class="text-primary">Recurring payment</h4><p class="text-secondary">Turn off One-time Expense to set this up.</p></div>
+        </div>
+      </figure>
+    </div>
+  </section>
+
+  <!-- =========================================================== C1 -->
+  <section id="c1" class="space-y-4 scroll-mt-20">
+    <div>
+      <p class="chrome-label">C1 · TRANSACTION LIST ROWS + DRAWER · NO NEW COLUMNS</p>
+      <h2 class="text-xl font-medium">Generated rows explain themselves</h2>
+    </div>
+
+    <div class="grid gap-6 lg:grid-cols-[1fr_375px] items-start">
+      <figure class="space-y-2 min-w-0" data-check="c1-desktop">
+        <figcaption class="chrome-label">LIST · PROVENANCE LINE ON EVERY WIDTH (ACCOUNT ADDED ON LG)</figcaption>
+        <div class="bg-container p-5 shadow-border-xs rounded-xl space-y-4">
+          <div class="bg-container-inset rounded-xl p-1">
+            <div class="py-2 px-4 flex items-center justify-between font-medium text-xs text-secondary"><p class="uppercase">October 8, 2026 <span>·</span> 2</p><span class="tabular-nums">-$1,336.50</span></div>
+            <div class="bg-container shadow-border-xs rounded-lg">
+              <div class="grid grid-cols-12 items-center text-primary text-sm font-medium p-4" data-row>
+                <div class="col-span-9 lg:col-span-8 flex items-center gap-3 lg:gap-4 pr-4 min-w-0">
+                  <span class="w-4 h-4 rounded-sm border border-primary shrink-0"></span>
+                  <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs uppercase shrink-0" style="background:color-mix(in oklab,#737373 10%,transparent);color:#737373">M</span>
+                  <div class="min-w-0 space-y-0.5">
+                    <a href="#" class="hover:underline truncate block">MacBook Air</a>
+                    <p class="text-xs font-normal text-secondary flex items-start gap-1"><i data-lucide="credit-card" class="w-3 h-3 text-fg-gray mt-0.5"></i><span class="min-w-0">Installment 1 of 12 <span aria-hidden="true">·</span> <a href="#" class="text-primary font-medium hover:underline whitespace-nowrap" aria-label="View plan for MacBook Air">View plan</a><span class="hidden lg:inline"> <span aria-hidden="true">·</span> </span><a href="#" class="hidden lg:inline hover:underline">BBVA Azul</a></span></p>
+                  </div>
+                </div>
+                <div class="hidden lg:block col-span-2"><span class="inline-flex items-center gap-1 text-sm font-medium rounded-full px-1.5 py-1 border" style="background:color-mix(in oklab,#e99537 10%,transparent);border-color:color-mix(in oklab,#e99537 10%,transparent);color:#e99537">Shopping</span></div>
+                <p class="col-span-3 lg:col-span-2 text-right tabular-nums">-$1,250.00</p>
+              </div>
+              <hr class="border-divider mx-4">
+              <div class="grid grid-cols-12 items-center text-primary text-sm font-medium p-4" data-row>
+                <div class="col-span-9 lg:col-span-8 flex items-center gap-3 lg:gap-4 pr-4 min-w-0">
+                  <span class="w-4 h-4 rounded-sm border border-primary shrink-0"></span>
+                  <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs uppercase shrink-0" style="background:color-mix(in oklab,#737373 10%,transparent);color:#737373">O</span>
+                  <div class="min-w-0 space-y-0.5"><a href="#" class="hover:underline block">Oxxo</a><p class="text-xs font-normal text-secondary hidden lg:block"><a href="#" class="hover:underline">BBVA Azul</a></p></div>
+                </div>
+                <div class="hidden lg:block col-span-2"><span class="inline-flex items-center gap-1 text-sm font-medium rounded-full px-1.5 py-1 border" style="background:color-mix(in oklab,#4da568 10%,transparent);border-color:color-mix(in oklab,#4da568 10%,transparent);color:#4da568">Groceries</span></div>
+                <p class="col-span-3 lg:col-span-2 text-right tabular-nums">-$86.50</p>
+              </div>
+            </div>
+          </div>
+          <div class="bg-container-inset rounded-xl p-1">
+            <div class="py-2 px-4 flex items-center justify-between font-medium text-xs text-secondary"><p class="uppercase">October 3, 2026 <span>·</span> 1</p><span class="tabular-nums">-$52.00</span></div>
+            <div class="bg-container shadow-border-xs rounded-lg">
+              <div class="grid grid-cols-12 items-center text-primary text-sm font-medium p-4" data-row>
+                <div class="col-span-9 lg:col-span-8 flex items-center gap-3 lg:gap-4 pr-4 min-w-0">
+                  <span class="w-4 h-4 rounded-sm border border-primary shrink-0"></span>
+                  <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs uppercase shrink-0" style="background:color-mix(in oklab,#737373 10%,transparent);color:#737373">I</span>
+                  <div class="min-w-0 space-y-0.5"><a href="#" class="hover:underline block">iCloud+</a>
+                    <p class="text-xs font-normal text-secondary flex items-start gap-1"><i data-lucide="repeat" class="w-3 h-3 text-fg-gray mt-0.5"></i><span class="min-w-0">Monthly charge <span aria-hidden="true">·</span> <a href="#" class="text-primary font-medium hover:underline">View plan</a><span class="hidden lg:inline"> <span aria-hidden="true">·</span> </span><a href="#" class="hidden lg:inline hover:underline">BBVA Azul</a></span></p></div>
+                </div>
+                <div class="hidden lg:block col-span-2"><span class="inline-flex items-center gap-1 text-sm font-medium rounded-full px-1.5 py-1 border" style="background:color-mix(in oklab,#6471eb 10%,transparent);border-color:color-mix(in oklab,#6471eb 10%,transparent);color:#6471eb">Entertainment</span></div>
+                <p class="col-span-3 lg:col-span-2 text-right tabular-nums">-$52.00</p>
+              </div>
+            </div>
+          </div>
+          <div class="bg-container-inset rounded-xl p-1">
+            <div class="py-2 px-4 flex items-center justify-between font-medium text-xs text-secondary"><p class="uppercase">September 8, 2026 <span>·</span> 1</p><span class="tabular-nums">-$15,000.00</span></div>
+            <div class="bg-container shadow-border-xs rounded-lg">
+              <div class="grid grid-cols-12 items-center text-primary text-sm font-medium p-4" data-row>
+                <div class="col-span-9 lg:col-span-8 flex items-center gap-3 lg:gap-4 pr-4 min-w-0">
+                  <span class="w-4 h-4 rounded-sm border border-primary shrink-0"></span>
+                  <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs uppercase shrink-0" style="background:color-mix(in oklab,#737373 10%,transparent);color:#737373">M</span>
+                  <div class="min-w-0 space-y-0.5"><a href="#" class="hover:underline block">MacBook Air</a>
+                    <p class="text-xs font-normal text-secondary flex items-start gap-1"><i data-lucide="credit-card" class="w-3 h-3 text-fg-gray mt-0.5"></i><span class="min-w-0">Paid in 12 installments <span aria-hidden="true">·</span> <a href="#" class="text-primary font-medium hover:underline">View plan</a><span class="hidden lg:inline"> <span aria-hidden="true">·</span> </span><a href="#" class="hidden lg:inline hover:underline">BBVA Azul</a></span></p></div>
+                </div>
+                <div class="hidden lg:block col-span-2"><span class="inline-flex items-center gap-1 text-sm font-medium rounded-full px-1.5 py-1 border" style="background:color-mix(in oklab,#e99537 10%,transparent);border-color:color-mix(in oklab,#e99537 10%,transparent);color:#e99537">Shopping</span></div>
+                <p class="col-span-3 lg:col-span-2 text-right tabular-nums">-$15,000.00</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+
+      <div class="space-y-6 min-w-0">
+        <figure class="space-y-2" data-check="c1-drawer">
+          <figcaption class="chrome-label">DRAWER · INSTALLMENT (NEUTRAL BLOCK + LOCKED AMOUNT)</figcaption>
+          <div class="frame-375 bg-container rounded-xl shadow-border-lg p-4 space-y-4">
+            <header class="space-y-1"><h3 class="font-medium"><span class="text-2xl tabular-nums">-$1,250.00</span> <span class="text-lg text-secondary">MXN</span></h3><span class="text-sm text-secondary">October 8, 2026</span></header>
+            <div tabindex="-1" class="flex items-start gap-3 rounded-lg border border-tertiary p-3">
+              <i data-lucide="credit-card" class="w-5 h-5 text-fg-gray"></i>
+              <div class="text-sm space-y-3 min-w-0">
+                <p class="text-primary font-medium">Installment 1 of 12</p>
+                <p class="text-secondary -mt-2">Counts as spending. Doesn't change your card balance.</p>
+                <a href="#c3" class="btn btn-sm btn-outline" aria-label="View plan for MacBook Air">View plan</a>
+              </div>
+            </div>
+            <div class="px-3 py-2 rounded-xl flex items-center justify-between bg-surface"><span class="font-medium text-xs uppercase text-secondary">Overview</span><i data-lucide="chevron-down" class="w-5 h-5 text-fg-gray rotate-180"></i></div>
+            <div class="space-y-2">
+              <label class="form-field"><span class="form-field__label">Name</span><input class="form-field__input" value="MacBook Air"></label>
+              <div class="flex flex-col gap-1">
+                <div class="flex gap-2" data-pair>
+                  <label class="form-field w-1/3"><span class="form-field__label">Type</span><input class="form-field__input" disabled value="Expense"></label>
+                  <label class="form-field w-2/3"><span class="form-field__label">Amount</span><input class="form-field__input tabular-nums" disabled value="$ 1,250.00" aria-describedby="lock1"></label>
+                </div>
+                <p class="text-xs text-secondary flex items-start gap-1" id="lock1"><i data-lucide="lock" class="w-3 h-3 mt-0.5 text-fg-gray"></i><span>Set by the plan.</span></p>
+              </div>
+            </div>
+          </div>
+        </figure>
+
+        <figure class="space-y-2">
+          <figcaption class="chrome-label">DRAWER · PURCHASE PAID IN INSTALLMENTS</figcaption>
+          <div class="frame-375 bg-container rounded-xl shadow-border-lg p-4 space-y-3">
+            <div class="flex items-start gap-3 rounded-lg border border-tertiary p-3">
+              <i data-lucide="credit-card" class="w-5 h-5 text-fg-gray"></i>
+              <div class="text-sm space-y-3 min-w-0">
+                <p class="text-primary font-medium">Paid in 12 installments</p>
+                <p class="text-secondary -mt-2">Adds to your card balance, not to spending. Each installment counts as spending.</p>
+                <a href="#c3" class="btn btn-sm btn-outline">View plan</a>
+              </div>
+            </div>
+            <div class="flex flex-col gap-1">
+              <label class="form-field"><span class="form-field__label">Amount</span><input class="form-field__input tabular-nums" disabled value="$ 15,000.00"></label>
+              <p class="text-xs text-secondary flex items-start gap-1"><i data-lucide="lock" class="w-3 h-3 mt-0.5 text-fg-gray"></i><span>To change it, delete this purchase and add it again.</span></p>
+            </div>
+            <div class="flex items-center justify-between gap-4 p-3">
+              <div class="text-sm space-y-1 min-w-0"><h4 class="text-primary">Delete transaction</h4><p class="text-secondary">Also deletes its 12 installments.</p></div>
+              <button class="btn btn-outline-destructive shrink-0">Delete</button>
+            </div>
+          </div>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================== C2 -->
+  <section id="c2" class="space-y-4 scroll-mt-20">
+    <div>
+      <p class="chrome-label">C2 · CREDIT CARD PAGE · UI::AccountPage TAB "RECURRING PAYMENTS"</p>
+      <h2 class="text-xl font-medium">Commitments on the card (Dime structure, Maybe skin)</h2>
+    </div>
+
+    <div class="space-y-4" data-check="c2">
+      <header class="flex items-center gap-3">
+        <span class="w-9 h-9 rounded-xl flex items-center justify-center text-sm font-medium" style="background:color-mix(in oklab,#1570EF 10%,transparent);color:#1570EF">B</span>
+        <h2 class="font-medium text-xl">BBVA Azul</h2>
+      </header>
+      <nav class="flex bg-surface-inset p-1 rounded-lg max-w-fit" role="tablist" aria-label="Account sections">
+        <button role="tab" aria-selected="false" class="inline-flex justify-center items-center text-sm font-medium px-6 py-1 rounded-md text-secondary">Activity</button>
+        <button role="tab" aria-selected="true" class="inline-flex justify-center items-center text-sm font-medium px-6 py-1 rounded-md bg-tab-active text-primary shadow-xs">Recurring payments</button>
+      </nav>
+
+      <div class="bg-container p-5 shadow-border-xs rounded-xl space-y-5">
+        <h2 class="font-medium text-lg">Recurring payments</h2>
+
+        <dl class="grid grid-cols-1 md:grid-cols-3 gap-1 bg-container-inset rounded-xl p-1" data-kpis>
+          <div class="bg-container shadow-border-xs rounded-lg p-4 flex flex-col gap-1">
+            <dt class="text-sm text-secondary">Committed per month</dt>
+            <dd class="text-2xl font-medium text-primary tabular-nums">$6,551.00</dd>
+          </div>
+          <div class="bg-container shadow-border-xs rounded-lg p-4 flex flex-col gap-1">
+            <dt class="text-sm text-secondary">Left on installments</dt>
+            <dd class="text-2xl font-medium text-primary tabular-nums">$54,450.00</dd>
+          </div>
+          <div class="bg-container shadow-border-xs rounded-lg p-4 flex flex-col gap-1">
+            <dt class="text-sm text-secondary">Last installment</dt>
+            <dd class="text-2xl font-medium text-primary tabular-nums"><time datetime="2028-01" aria-label="January 2028">Jan 2028</time></dd>
+          </div>
+        </dl>
+
+        <!-- DS::Alert variant: :warning (message composed) -->
+        <div class="flex items-start gap-3 p-4 rounded-lg border bg-alert-warning text-alert-warning border-alert-warning" data-alert>
+          <i data-lucide="triangle-alert" class="w-4 h-4 shrink-0 mt-0.5"></i>
+          <div class="flex-1 text-sm min-w-0">
+            <p class="font-medium text-pretty">2 upcoming budgets are over. The first is November 2026.</p>
+            <p class="text-secondary mt-1 tabular-nums">Across all accounts: $9,200.00 committed, 123% of the $7,500.00 budgeted for spending.</p>
+            <p class="text-secondary mt-1">Compared with your October 2026 budget. Set up November 2026 to use its own.</p>
+            <a href="#" class="btn btn-sm btn-outline mt-3" aria-label="Review November 2026 budget">Review budget</a>
+          </div>
+        </div>
+
+        <section class="space-y-3" aria-labelledby="upc">
+          <h3 id="upc" class="flex items-center gap-2 text-sm font-medium text-primary"><i data-lucide="calendar-clock" class="w-4 h-4 text-fg-gray"></i>Upcoming</h3>
+
+          <div class="bg-container-inset rounded-xl p-1">
+            <h4 class="py-2 px-4 flex items-center justify-between font-medium text-xs text-secondary"><span class="uppercase">Oct 12 · 1</span><span class="tabular-nums"><span class="sr-only">Total for October 12: </span>$299.00</span></h4>
+            <ul class="bg-container shadow-border-xs rounded-lg">
+              <li class="flex items-center gap-3 px-4 py-3" data-crow>
+                <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium uppercase shrink-0" style="background:color-mix(in oklab,#737373 10%,transparent);color:#737373">N</span>
+                <div class="min-w-0 grow"><p class="text-sm font-medium text-primary truncate">Netflix</p><p class="text-xs text-secondary flex items-center gap-1"><i data-lucide="repeat" class="w-3 h-3 text-fg-gray"></i><span>Monthly charge</span></p></div>
+                <p class="text-sm font-medium text-primary tabular-nums text-right shrink-0">$299.00</p>
+              </li>
+            </ul>
+          </div>
+
+          <div class="bg-container-inset rounded-xl p-1">
+            <h4 class="py-2 px-4 flex items-center justify-between font-medium text-xs text-secondary"><span class="uppercase">Oct 15 · 1</span><span class="tabular-nums">$3,500.00</span></h4>
+            <ul class="bg-container shadow-border-xs rounded-lg">
+              <li class="flex items-center gap-3 px-4 py-3" data-crow>
+                <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium uppercase shrink-0" style="background:color-mix(in oklab,#737373 10%,transparent);color:#737373">S</span>
+                <div class="min-w-0 grow"><p class="text-sm font-medium text-primary truncate">Sala</p><p class="text-xs text-secondary flex items-center gap-1"><i data-lucide="credit-card" class="w-3 h-3 text-fg-gray"></i><span>Installment 2 of 6</span></p></div>
+                <p class="text-sm font-medium text-primary tabular-nums text-right shrink-0">$3,500.00</p>
+              </li>
+            </ul>
+          </div>
+
+          <div class="bg-container-inset rounded-xl p-1">
+            <h4 class="py-2 px-4 flex items-center justify-between font-medium text-xs text-secondary"><span class="uppercase">Oct 20 · 1</span><span class="tabular-nums">$1,450.00</span></h4>
+            <ul class="bg-container shadow-border-xs rounded-lg">
+              <li class="flex items-center gap-3 px-4 py-3" data-crow>
+                <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium uppercase shrink-0" style="background:color-mix(in oklab,#737373 10%,transparent);color:#737373">R</span>
+                <div class="min-w-0 grow"><p class="text-sm font-medium text-primary truncate" title="Refrigerador LG">Refrigerador LG</p><p class="text-xs text-secondary flex items-center gap-1"><i data-lucide="credit-card" class="w-3 h-3 text-fg-gray"></i><span>Installment 3 of 18</span></p></div>
+                <p class="text-sm font-medium text-primary tabular-nums text-right shrink-0">$1,450.00</p>
+              </li>
+            </ul>
+          </div>
+
+          <div class="bg-container-inset rounded-xl p-1">
+            <h4 class="py-2 px-4 flex items-center justify-between font-medium text-xs text-secondary"><span class="uppercase">Nov 3 · 1</span><span class="tabular-nums">$52.00</span></h4>
+            <ul class="bg-container shadow-border-xs rounded-lg">
+              <li class="flex items-center gap-3 px-4 py-3" data-crow>
+                <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium uppercase shrink-0" style="background:color-mix(in oklab,#737373 10%,transparent);color:#737373">I</span>
+                <div class="min-w-0 grow"><p class="text-sm font-medium text-primary truncate">iCloud+</p><p class="text-xs text-secondary flex items-center gap-1"><i data-lucide="repeat" class="w-3 h-3 text-fg-gray"></i><span>Monthly charge</span></p></div>
+                <p class="text-sm font-medium text-primary tabular-nums text-right shrink-0">$52.00</p>
+              </li>
+            </ul>
+          </div>
+
+          <div class="bg-container-inset rounded-xl p-1">
+            <h4 class="py-2 px-4 flex items-center justify-between font-medium text-xs text-secondary"><span class="uppercase">Nov 8 · 1</span><span class="tabular-nums">$1,250.00</span></h4>
+            <ul class="bg-container shadow-border-xs rounded-lg">
+              <li class="flex items-center gap-3 px-4 py-3" data-crow>
+                <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium uppercase shrink-0" style="background:color-mix(in oklab,#737373 10%,transparent);color:#737373">M</span>
+                <div class="min-w-0 grow"><p class="text-sm font-medium text-primary truncate">MacBook Air</p><p class="text-xs text-secondary flex items-center gap-1"><i data-lucide="credit-card" class="w-3 h-3 text-fg-gray"></i><span>Installment 2 of 12</span></p></div>
+                <p class="text-sm font-medium text-primary tabular-nums text-right shrink-0">$1,250.00</p>
+              </li>
+            </ul>
+          </div>
+          <p class="chrome-label">… CONTINUES THROUGH DEC 27 (CURRENT + 2 BUDGET MONTHS)</p>
+
+          <a href="#future" class="btn btn-outline w-full" aria-label="See later months in your budget">See later months <i data-lucide="arrow-right" class="w-4 h-4 text-fg-gray"></i></a>
+        </section>
+
+        <table class="w-full text-sm" data-table>
+          <caption class="text-left text-sm font-medium text-primary mb-2">Installments</caption>
+          <thead class="text-xs uppercase font-medium text-secondary">
+            <tr class="bg-container-inset">
+              <th scope="col" class="text-left font-medium px-4 py-2 rounded-l-lg">Purchase</th>
+              <th scope="col" class="text-right font-medium px-4 py-2">Per month</th>
+              <th scope="col" class="text-right font-medium px-4 py-2 hidden md:table-cell">Payments left</th>
+              <th scope="col" class="text-right font-medium px-4 py-2 hidden md:table-cell">Left to pay</th>
+              <th scope="col" class="text-right font-medium px-4 py-2 hidden md:table-cell">Ends</th>
+              <th scope="col" class="px-4 py-2 rounded-r-lg"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody class="tabular-nums">
+            <tr class="border-b border-divider">
+              <td class="px-4 py-3 align-top"><p class="font-medium text-primary">Sala</p><p class="text-xs text-secondary md:hidden">5 of 6 · $17,500.00 · Feb 15, 2027</p></td>
+              <td class="px-4 py-3 align-top text-right text-primary">$3,500.00</td>
+              <td class="px-4 py-3 align-top text-right text-secondary hidden md:table-cell">5 of 6</td>
+              <td class="px-4 py-3 align-top text-right text-primary hidden md:table-cell">$17,500.00</td>
+              <td class="px-4 py-3 align-top text-right text-secondary hidden md:table-cell whitespace-nowrap">Feb 15, 2027</td>
+              <td class="px-4 py-3 align-top text-right"><a href="#c3" class="text-primary font-medium hover:underline whitespace-nowrap" aria-label="View plan for Sala">View plan</a></td>
+            </tr>
+            <tr class="border-b border-divider">
+              <td class="px-4 py-3 align-top"><p class="font-medium text-primary">MacBook Air</p><p class="text-xs text-secondary md:hidden">11 of 12 · $13,750.00 · Sep 8, 2027</p></td>
+              <td class="px-4 py-3 align-top text-right text-primary">$1,250.00</td>
+              <td class="px-4 py-3 align-top text-right text-secondary hidden md:table-cell">11 of 12</td>
+              <td class="px-4 py-3 align-top text-right text-primary hidden md:table-cell">$13,750.00</td>
+              <td class="px-4 py-3 align-top text-right text-secondary hidden md:table-cell whitespace-nowrap">Sep 8, 2027</td>
+              <td class="px-4 py-3 align-top text-right"><a href="#c3" class="text-primary font-medium hover:underline whitespace-nowrap">View plan</a></td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 align-top"><p class="font-medium text-primary">Refrigerador LG</p><p class="text-xs text-secondary md:hidden">16 of 18 · $23,200.00 · Jan 20, 2028</p></td>
+              <td class="px-4 py-3 align-top text-right text-primary">$1,450.00</td>
+              <td class="px-4 py-3 align-top text-right text-secondary hidden md:table-cell">16 of 18</td>
+              <td class="px-4 py-3 align-top text-right text-primary hidden md:table-cell">$23,200.00</td>
+              <td class="px-4 py-3 align-top text-right text-secondary hidden md:table-cell whitespace-nowrap">Jan 20, 2028</td>
+              <td class="px-4 py-3 align-top text-right"><a href="#c3" class="text-primary font-medium hover:underline whitespace-nowrap">View plan</a></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <table class="w-full text-sm" data-table>
+          <caption class="text-left text-sm font-medium text-primary mb-2">Monthly charges</caption>
+          <thead class="text-xs uppercase font-medium text-secondary">
+            <tr class="bg-container-inset">
+              <th scope="col" class="text-left font-medium px-4 py-2 rounded-l-lg">Name</th>
+              <th scope="col" class="text-right font-medium px-4 py-2">Per month</th>
+              <th scope="col" class="text-right font-medium px-4 py-2 hidden md:table-cell">Next payment</th>
+              <th scope="col" class="text-right font-medium px-4 py-2 hidden md:table-cell">Ends</th>
+              <th scope="col" class="px-4 py-2 rounded-r-lg"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody class="tabular-nums">
+            <tr class="border-b border-divider">
+              <td class="px-4 py-3 align-top"><p class="font-medium text-primary">Netflix</p><p class="text-xs text-secondary md:hidden">Oct 12 · No end date</p></td>
+              <td class="px-4 py-3 align-top text-right text-primary">$299.00</td>
+              <td class="px-4 py-3 align-top text-right text-secondary hidden md:table-cell">Oct 12</td>
+              <td class="px-4 py-3 align-top text-right text-secondary hidden md:table-cell">No end date</td>
+              <td class="px-4 py-3 align-top text-right"><a href="#c3" class="text-primary font-medium hover:underline whitespace-nowrap">View plan</a></td>
+            </tr>
+            <tr>
+              <td class="px-4 py-3 align-top"><p class="font-medium text-primary">iCloud+</p><p class="text-xs text-secondary md:hidden">Nov 3 · No end date</p></td>
+              <td class="px-4 py-3 align-top text-right text-primary">$52.00</td>
+              <td class="px-4 py-3 align-top text-right text-secondary hidden md:table-cell">Nov 3</td>
+              <td class="px-4 py-3 align-top text-right text-secondary hidden md:table-cell">No end date</td>
+              <td class="px-4 py-3 align-top text-right"><a href="#c3" class="text-primary font-medium hover:underline whitespace-nowrap">View plan</a></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <details class="group">
+          <summary class="px-3 py-2 rounded-xl cursor-pointer flex items-center gap-3 bg-surface"><i data-lucide="chevron-right" class="w-5 h-5 text-fg-gray rot-90"></i><span class="font-medium text-sm text-primary">Past plans (3)</span></summary>
+          <div class="mt-2 bg-container-inset rounded-xl p-1">
+            <ul class="bg-container shadow-border-xs rounded-lg">
+              <li class="flex items-center gap-3 px-4 py-3"><div class="min-w-0 grow"><p class="text-sm font-medium text-primary">Audífonos Sony</p><p class="text-xs text-secondary">Installments</p></div><p class="text-xs text-secondary flex items-center gap-1 shrink-0"><i data-lucide="check" class="w-3 h-3"></i><span>Paid off Jul 14, 2026</span></p></li>
+              <hr class="border-divider mx-4">
+              <li class="flex items-center gap-3 px-4 py-3"><div class="min-w-0 grow"><p class="text-sm font-medium text-primary">Seguro celular</p><p class="text-xs text-secondary">Monthly charge</p></div><p class="text-xs text-secondary flex items-center gap-1 shrink-0"><i data-lucide="check" class="w-3 h-3"></i><span>Ended Aug 1, 2026</span></p></li>
+              <hr class="border-divider mx-4">
+              <li class="flex items-center gap-3 px-4 py-3"><div class="min-w-0 grow"><p class="text-sm font-medium text-primary">Disney+</p><p class="text-xs text-secondary">Monthly charge</p></div><p class="text-xs text-secondary flex items-center gap-1 shrink-0"><i data-lucide="circle-stop" class="w-3 h-3"></i><span>Stopped Mar 2, 2026</span></p></li>
+            </ul>
+          </div>
+        </details>
+      </div>
+    </div>
+
+    <div class="grid gap-6 md:grid-cols-3 items-start pt-2">
+      <figure class="space-y-2">
+        <figcaption class="chrome-label">EMPTY</figcaption>
+        <div class="bg-container p-5 shadow-border-xs rounded-xl">
+          <div class="flex flex-col items-center text-center gap-3 py-10">
+            <span class="w-9 h-9 rounded-xl bg-container-inset flex items-center justify-center"><i data-lucide="repeat" class="w-6 h-6 text-fg-gray"></i></span>
+            <h3 class="text-sm font-medium text-primary">No recurring payments on this card</h3>
+            <p class="text-sm text-secondary max-w-xs -mt-2">Add one when you create a transaction.</p>
+            <a href="#b1" class="btn btn-secondary"><i data-lucide="plus" class="w-4 h-4"></i>New transaction</a>
+          </div>
+        </div>
+      </figure>
+      <figure class="space-y-2">
+        <figcaption class="chrome-label">ALL DONE</figcaption>
+        <div class="bg-container p-5 shadow-border-xs rounded-xl space-y-4">
+          <div class="flex flex-col items-center text-center gap-3 py-6">
+            <span class="w-9 h-9 rounded-xl bg-container-inset flex items-center justify-center"><i data-lucide="check" class="w-6 h-6 text-fg-gray"></i></span>
+            <h3 class="text-sm font-medium text-primary">Nothing left to pay</h3>
+          </div>
+          <div class="px-3 py-2 rounded-xl flex items-center gap-3 bg-surface"><i data-lucide="chevron-right" class="w-5 h-5 text-fg-gray rotate-90"></i><span class="font-medium text-sm text-primary">Past plans (1)</span></div>
+          <div class="bg-container-inset rounded-xl p-1"><div class="bg-container shadow-border-xs rounded-lg flex items-center gap-3 px-4 py-3"><p class="grow text-sm font-medium text-primary">Audífonos Sony</p><p class="text-xs text-secondary flex items-center gap-1 shrink-0"><i data-lucide="check" class="w-3 h-3"></i><span>Paid off Jul 14, 2026</span></p></div></div>
+        </div>
+      </figure>
+      <figure class="space-y-2">
+        <figcaption class="chrome-label">CHARGES ONLY (INSTALLMENT KPIS OMITTED, NOT ZERO)</figcaption>
+        <div class="bg-container p-5 shadow-border-xs rounded-xl">
+          <dl class="grid grid-cols-1 bg-container-inset rounded-xl p-1"><div class="bg-container shadow-border-xs rounded-lg p-4 flex flex-col gap-1"><dt class="text-sm text-secondary">Committed per month</dt><dd class="text-2xl font-medium text-primary tabular-nums">$649.00</dd></div></dl>
+        </div>
+      </figure>
+    </div>
+  </section>
+
+  <!-- =========================================================== C3 -->
+  <section id="c3" class="space-y-4 scroll-mt-20">
+    <div>
+      <p class="chrome-label">C3 · PLAN DIALOG (DS::Dialog md) + EXTENDED CONFIRM (sm)</p>
+      <h2 class="text-xl font-medium">View, edit, stop, delete</h2>
+    </div>
+    <div class="grid gap-6 md:grid-cols-2 xl:grid-cols-4 items-start">
+      <figure class="space-y-2 xl:col-span-2" data-check="c3-plan">
+        <figcaption class="chrome-label">ACTIVE INSTALLMENT PLAN</figcaption>
+        <div class="bg-container rounded-xl shadow-border-lg p-4 space-y-4 max-w-md">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0"><h2 class="text-lg font-medium text-primary">MacBook Air</h2>
+              <p class="text-sm text-secondary tabular-nums">12 installments of $1,250.00 <span aria-hidden="true">·</span> Active</p></div>
+            <i data-lucide="x" class="w-5 h-5 text-fg-gray mt-1"></i>
+          </div>
+          <div>
+            <div class="flex h-1.5 mb-3 gap-1"><div class="rounded-md h-1.5 bg-inverse" style="width:8.33%"></div><div class="rounded-md h-1.5 bg-surface-inset" style="width:91.67%"></div></div>
+            <div class="flex justify-between text-sm tabular-nums"><p class="text-secondary">1 of 12 paid</p><p class="text-primary font-medium text-right">$13,750.00 left</p></div>
+          </div>
+          <div class="space-y-2">
+            <label class="form-field"><span class="form-field__label">Name</span><input class="form-field__input" value="MacBook Air"></label>
+            <label class="form-field"><span class="form-field__label">Category</span><input class="form-field__input" value="Shopping"></label>
+          </div>
+          <div class="flex items-start gap-3 rounded-lg border border-tertiary p-3"><i data-lucide="lock" class="w-5 h-5 text-fg-gray"></i><p class="text-sm text-secondary">To change installments or dates, delete the purchase and add it again.</p></div>
+          <button class="btn btn-primary w-full">Save changes</button>
+          <div class="border-t border-divider pt-4">
+            <button class="btn btn-outline-destructive">Stop payments</button>
+          </div>
+        </div>
+      </figure>
+
+      <figure class="space-y-2">
+        <figcaption class="chrome-label">STOPPED (READ-ONLY)</figcaption>
+        <div class="bg-container rounded-xl shadow-border-lg p-4 space-y-4">
+          <div><h2 class="text-lg font-medium text-primary">Disney+</h2>
+            <p class="text-sm text-secondary tabular-nums flex flex-wrap items-center gap-x-1"><span>Monthly charge</span><span aria-hidden="true">·</span><span>$179.00</span><span aria-hidden="true">·</span><span class="inline-flex items-center gap-1"><i data-lucide="circle-stop" class="w-3 h-3"></i>Stopped Mar 2, 2026</span></p></div>
+          <dl class="space-y-3 text-sm">
+            <div class="flex justify-between gap-4"><dt class="text-secondary">Category</dt><dd class="text-primary font-medium text-right">Entertainment</dd></div>
+            <div class="flex justify-between gap-4"><dt class="text-secondary">Account</dt><dd class="text-primary font-medium text-right">BBVA Azul</dd></div>
+          </dl>
+        </div>
+      </figure>
+
+      <div class="space-y-6">
+        <figure class="space-y-2">
+          <figcaption class="chrome-label">CONFIRM STOP · FOCUS ON "KEEP IT"</figcaption>
+          <div class="bg-container rounded-xl shadow-border-lg p-4 space-y-4 max-w-sm">
+            <div class="space-y-2"><h3 class="font-medium text-primary">Stop Netflix?</h3><p class="text-sm text-secondary">No new payments will be added. The 4 already added stay.</p></div>
+            <div class="flex flex-col gap-2"><button class="btn btn-outline-destructive w-full">Stop payments</button><button class="btn btn-outline w-full" style="outline:2px solid var(--text-primary);outline-offset:2px">Keep it</button></div>
+          </div>
+        </figure>
+        <figure class="space-y-2">
+          <figcaption class="chrome-label">CONFIRM DELETE PURCHASE · HIGH SEVERITY</figcaption>
+          <div class="bg-container rounded-xl shadow-border-lg p-4 space-y-4 max-w-sm">
+            <div class="space-y-2"><h3 class="font-medium text-primary">Delete this purchase and its installments?</h3>
+              <p class="text-sm text-secondary">All 12 installments will be deleted, including the 1 already added. Your card balance and past budgets will change. This can't be undone.</p></div>
+            <div class="flex flex-col gap-2"><button class="btn btn-destructive w-full">Delete purchase and installments</button><button class="btn btn-outline w-full">Keep it</button></div>
+          </div>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- =========================================================== C4 -->
+  <section id="c4" class="space-y-4 scroll-mt-20">
+    <div>
+      <p class="chrome-label">C4 · BUDGET LEFT COLUMN (TRUE 300 PX WIDTH) · BETWEEN DONUT AND TABS</p>
+      <h2 class="text-xl font-medium">The number is the alert; yellow only above 100%</h2>
+    </div>
+    <div class="flex flex-wrap gap-6 items-start">
+
+      <figure class="space-y-2 col-300" data-check="c4-normal">
+        <figcaption class="chrome-label">1 · CURRENT · NORMAL (87%) · ZERO YELLOW</figcaption>
+        <div class="bg-container rounded-xl shadow-border-xs p-4 space-y-3">
+          <h3 class="text-sm text-secondary flex items-center gap-1.5"><i data-lucide="repeat" class="w-4 h-4 text-fg-gray"></i><span>Recurring payments</span></h3>
+          <p class="tabular-nums"><span class="block text-xl font-medium text-primary">$6,551.00</span><span class="block text-sm text-secondary">committed to recurring payments</span></p>
+          <div class="flex h-1.5 gap-1"><div class="rounded-md h-1.5 bg-inverse" style="width:87%"></div><div class="rounded-md h-1.5 bg-surface-inset" style="width:13%"></div></div>
+          <p class="text-sm text-primary font-medium tabular-nums">87% of your budget</p>
+          <details class="group">
+            <summary class="px-3 py-2 rounded-xl cursor-pointer flex items-center gap-3 bg-surface" aria-label="See recurring payment details"><i data-lucide="chevron-right" class="w-5 h-5 text-fg-gray rot-90"></i><span class="font-medium text-sm text-primary">See details</span></summary>
+            <div class="mt-2 space-y-2">
+              <div class="bg-container-inset rounded-xl p-1">
+                <h4 class="py-2 px-3 flex items-center justify-between font-medium text-xs text-secondary"><span class="uppercase">Oct 12 · 1</span><span class="tabular-nums">$299.00</span></h4>
+                <ul class="bg-container shadow-border-xs rounded-lg">
+                  <li class="flex items-start gap-2 px-3 py-3" data-crow>
+                    <div class="min-w-0 grow"><p class="text-sm font-medium text-primary truncate">Netflix</p><p class="text-xs text-secondary flex items-start gap-1"><i data-lucide="repeat" class="w-3 h-3 text-fg-gray mt-0.5"></i><span class="min-w-0">Monthly charge <span aria-hidden="true">·</span> <a href="#c2" class="hover:underline">BBVA Azul</a></span></p></div>
+                    <div class="text-right shrink-0"><p class="text-sm font-medium text-primary tabular-nums">$299.00</p><a href="#c3" class="text-xs font-medium text-primary hover:underline" aria-label="View plan for Netflix">View plan</a></div>
+                  </li>
+                </ul>
+              </div>
+              <div class="bg-container-inset rounded-xl p-1">
+                <h4 class="py-2 px-3 flex items-center justify-between font-medium text-xs text-secondary"><span class="uppercase">Oct 15 · 1</span><span class="tabular-nums">$3,500.00</span></h4>
+                <ul class="bg-container shadow-border-xs rounded-lg">
+                  <li class="flex items-start gap-2 px-3 py-3" data-crow>
+                    <div class="min-w-0 grow"><p class="text-sm font-medium text-primary truncate">Sala</p><p class="text-xs text-secondary flex items-start gap-1"><i data-lucide="credit-card" class="w-3 h-3 text-fg-gray mt-0.5"></i><span class="min-w-0">Installment 2 of 6 <span aria-hidden="true">·</span> <a href="#c2" class="hover:underline">BBVA Azul</a></span></p></div>
+                    <div class="text-right shrink-0"><p class="text-sm font-medium text-primary tabular-nums">$3,500.00</p><a href="#c3" class="text-xs font-medium text-primary hover:underline">View plan</a></div>
+                  </li>
+                </ul>
+              </div>
+              <p class="chrome-label">… 3 MORE DATES</p>
+            </div>
+          </details>
+        </div>
+      </figure>
+
+      <figure class="space-y-2 col-300" data-check="c4-warning">
+        <figcaption class="chrome-label">2 · FUTURE · OVER (B + A) · VS REFERENCE BUDGET</figcaption>
+        <div class="bg-container rounded-xl shadow-border-xs p-4 space-y-3">
+          <!-- DS::Alert :warning -->
+          <div class="flex items-start gap-3 p-4 rounded-lg border bg-alert-warning text-alert-warning border-alert-warning" data-alert>
+            <i data-lucide="triangle-alert" class="w-4 h-4 shrink-0 mt-0.5"></i>
+            <div class="flex-1 text-sm min-w-0">
+              <p class="font-medium text-pretty tabular-nums">Recurring payments are $1,700.00 over your December 2026 budget</p>
+              <p class="text-secondary mt-1 tabular-nums">$9,200.00 committed, 123% of the $7,500.00 budgeted for spending.</p>
+              <p class="text-secondary mt-1">Compared with your October 2026 budget. Set up December 2026 to use its own.</p>
+              <a href="#" class="btn btn-sm btn-outline mt-3" aria-label="Review December 2026 budget">Review budget</a>
+            </div>
+          </div>
+          <div class="px-3 py-2 rounded-xl flex items-center gap-3 bg-surface"><i data-lucide="chevron-right" class="w-5 h-5 text-fg-gray"></i><span class="font-medium text-sm text-primary">See details</span></div>
+        </div>
+      </figure>
+
+      <figure class="space-y-2 col-300" data-check="c4-own">
+        <figcaption class="chrome-label">3 · OVER ITS OWN BUDGET (NO REFERENCE LINE)</figcaption>
+        <div class="bg-container rounded-xl shadow-border-xs p-4 space-y-3">
+          <div class="flex items-start gap-3 p-4 rounded-lg border bg-alert-warning text-alert-warning border-alert-warning" data-alert>
+            <i data-lucide="triangle-alert" class="w-4 h-4 shrink-0 mt-0.5"></i>
+            <div class="flex-1 text-sm min-w-0">
+              <p class="font-medium text-pretty tabular-nums">Recurring payments are $200.00 over your February 2027 budget</p>
+              <p class="text-secondary mt-1 tabular-nums">$9,200.00 committed, 103% of the $9,000.00 budgeted for spending.</p>
+              <a href="#" class="btn btn-sm btn-outline mt-3" aria-label="Review February 2027 budget">Review budget</a>
+            </div>
+          </div>
+          <div class="px-3 py-2 rounded-xl flex items-center gap-3 bg-surface"><i data-lucide="chevron-right" class="w-5 h-5 text-fg-gray"></i><span class="font-medium text-sm text-primary">See details</span></div>
+        </div>
+      </figure>
+
+      <figure class="space-y-2 col-300" data-check="c4-stress">
+        <figcaption class="chrome-label">4 · STRESS · 7 DIGITS + "SEPTEMBER 2027" · NO TRUNCATION</figcaption>
+        <div class="bg-container rounded-xl shadow-border-xs p-4 space-y-3">
+          <div class="flex items-start gap-3 p-4 rounded-lg border bg-alert-warning text-alert-warning border-alert-warning" data-alert>
+            <i data-lucide="triangle-alert" class="w-4 h-4 shrink-0 mt-0.5"></i>
+            <div class="flex-1 text-sm min-w-0">
+              <p class="font-medium text-pretty tabular-nums">Recurring payments are $1,234,567.89 over your September 2027 budget</p>
+              <p class="text-secondary mt-1 tabular-nums">$2,734,567.89 committed, 183% of the $1,500,000.00 budgeted for spending.</p>
+              <a href="#" class="btn btn-sm btn-outline mt-3">Review budget</a>
+            </div>
+          </div>
+          <div>
+            <p class="chrome-label mb-1">NEUTRAL WITH 7 DIGITS</p>
+            <p class="tabular-nums"><span class="block text-xl font-medium text-primary">$1,234,567.89</span><span class="block text-sm text-secondary">committed to recurring payments</span></p>
+          </div>
+        </div>
+      </figure>
+
+      <figure class="space-y-2 col-300">
+        <figcaption class="chrome-label">5 · FUTURE · NORMAL VS REFERENCE (MARCH 2027)</figcaption>
+        <div class="bg-container rounded-xl shadow-border-xs p-4 space-y-3">
+          <h3 class="text-sm text-secondary flex items-center gap-1.5"><i data-lucide="repeat" class="w-4 h-4 text-fg-gray"></i><span>Recurring payments</span></h3>
+          <p class="tabular-nums"><span class="block text-xl font-medium text-primary">$5,700.00</span><span class="block text-sm text-secondary">committed to recurring payments</span></p>
+          <div class="flex h-1.5 gap-1"><div class="rounded-md h-1.5 bg-inverse" style="width:76%"></div><div class="rounded-md h-1.5 bg-surface-inset" style="width:24%"></div></div>
+          <div class="space-y-1">
+            <p class="text-sm text-primary font-medium tabular-nums">76% of your October 2026 budget</p>
+            <p class="text-xs text-secondary">Compared with your October 2026 budget. Set up March 2027 to use its own.</p>
+          </div>
+          <div class="px-3 py-2 rounded-xl flex items-center gap-3 bg-surface"><i data-lucide="chevron-right" class="w-5 h-5 text-fg-gray"></i><span class="font-medium text-sm text-primary">See details</span></div>
+        </div>
+      </figure>
+
+      <figure class="space-y-2 col-300">
+        <figcaption class="chrome-label">6 · FUTURE · NOTHING COMMITTED</figcaption>
+        <div class="bg-container rounded-xl shadow-border-xs p-4">
+          <div class="flex items-start gap-3 rounded-lg border border-tertiary p-3">
+            <i data-lucide="calendar-clock" class="w-5 h-5 text-fg-gray"></i>
+            <h4 class="text-sm text-primary">Nothing committed for October 2027 yet</h4>
+          </div>
+        </div>
+      </figure>
+    </div>
+  </section>
+
+  <!-- =========================================================== FUTURE -->
+  <section id="future" class="space-y-6 scroll-mt-20">
+    <div>
+      <p class="chrome-label">FUTURE BUDGETS · SAME SCREEN · UP TO 12 MONTHS AHEAD</p>
+      <h2 class="text-xl font-medium">Current vs future: told apart by words and shape, not grey</h2>
+    </div>
+
+    <div class="grid gap-6 md:grid-cols-2 items-start">
+      <figure class="space-y-2 min-w-0" data-check="hdr-current">
+        <figcaption class="chrome-label">CURRENT · OCTOBER 2026 (UNCHANGED SCREEN)</figcaption>
+        <div class="flex flex-wrap items-center gap-1 gap-y-2" data-hdr>
+          <span class="inline-flex w-8 h-8 items-center justify-center rounded-md"><i data-lucide="chevron-left" class="w-5 h-5 text-fg-gray"></i></span>
+          <span class="inline-flex w-8 h-8 items-center justify-center rounded-md"><i data-lucide="chevron-right" class="w-5 h-5 text-fg-gray"></i></span>
+          <span class="flex items-center gap-1 rounded-md p-2"><span class="text-primary font-medium text-lg lg:text-base">October 2026</span><i data-lucide="chevron-down" class="w-5 h-5 text-fg-gray"></i></span>
+          <a class="btn btn-outline ml-auto">Today</a>
+        </div>
+        <div class="h-[300px] bg-container rounded-xl shadow-border-xs p-8 col-300 relative">
+          <svg class="absolute inset-0 m-auto" width="236" height="236" viewBox="0 0 100 100" data-donut='[[44,"#e99537"],[20,"#4da568"],[10,"#6471eb"],[6,"#df4e92"],[20,"unused"]]'></svg>
+          <div class="relative h-full flex flex-col items-center justify-center">
+            <p class="text-sm mb-2" style="color:#5C5C5C">Spent</p>
+            <p class="mb-2 text-3xl font-medium text-primary tabular-nums">$6,012.40</p>
+            <a class="text-sm text-secondary inline-flex items-center gap-1">of $7,500.00 <i data-lucide="pencil" class="w-4 h-4"></i></a>
+          </div>
+        </div>
+      </figure>
+
+      <figure class="space-y-2 min-w-0" data-check="hdr-future">
+        <figcaption class="chrome-label">FUTURE · DECEMBER 2026 (NO BUDGET YET)</figcaption>
+        <div class="flex flex-wrap items-center gap-1 gap-y-2" data-hdr>
+          <a class="inline-flex w-8 h-8 items-center justify-center rounded-md" aria-label="Previous budget: November 2026"><i data-lucide="chevron-left" class="w-5 h-5 text-fg-gray"></i></a>
+          <a class="inline-flex w-8 h-8 items-center justify-center rounded-md" aria-label="Next budget: January 2027"><i data-lucide="chevron-right" class="w-5 h-5 text-fg-gray"></i></a>
+          <span class="flex items-center gap-1 rounded-md p-2"><span class="text-primary font-medium text-lg lg:text-base">December 2026</span><i data-lucide="chevron-down" class="w-5 h-5 text-fg-gray"></i></span>
+          <span class="inline-flex items-center gap-1.5 rounded-md bg-surface-inset px-2 py-1 text-sm font-medium text-primary" data-chip><i data-lucide="calendar-clock" class="w-4 h-4 text-fg-gray"></i><span>Starts <time datetime="2026-11-28">Nov 28</time></span></span>
+          <a class="btn btn-outline ml-auto">Today</a>
+        </div>
+        <div class="h-[300px] bg-container rounded-xl shadow-border-xs p-8 col-300 relative">
+          <svg class="absolute inset-0 m-auto" width="236" height="236" viewBox="0 0 100 100" data-donut='[[13.6,"#e99537"],[53.8,"#c44fe9"],[21.7,"#6471eb"],[3.8,"#df4e92"],[7.1,"#4da568"]]'></svg>
+          <div class="relative h-full flex flex-col items-center justify-center">
+            <p class="flex items-center gap-1 text-sm font-medium text-primary mb-2" data-chip><i data-lucide="repeat" class="w-4 h-4 text-fg-gray"></i><span>Committed</span></p>
+            <p class="mb-2 text-3xl font-medium text-primary tabular-nums">$9,200.00</p>
+            <a class="text-sm text-primary inline-flex items-center gap-1 font-medium"><i data-lucide="plus" class="w-4 h-4"></i>New budget</a>
+          </div>
+        </div>
+      </figure>
+    </div>
+
+    <figure class="space-y-2" data-check="future-full">
+      <figcaption class="chrome-label">FUTURE WITH ITS OWN BUDGET · JANUARY 2027 ($14,000.00) · NORMAL STATE</figcaption>
+      <div class="flex flex-wrap items-center gap-1 gap-y-2 mb-4" data-hdr>
+        <a class="inline-flex w-8 h-8 items-center justify-center rounded-md" aria-label="Previous budget: December 2026"><i data-lucide="chevron-left" class="w-5 h-5 text-fg-gray"></i></a>
+        <a class="inline-flex w-8 h-8 items-center justify-center rounded-md" aria-label="Next budget: February 2027"><i data-lucide="chevron-right" class="w-5 h-5 text-fg-gray"></i></a>
+        <span class="flex items-center gap-1 rounded-md p-2"><span class="text-primary font-medium text-lg lg:text-base">January 2027</span><i data-lucide="chevron-down" class="w-5 h-5 text-fg-gray"></i></span>
+        <span class="inline-flex items-center gap-1.5 rounded-md bg-surface-inset px-2 py-1 text-sm font-medium text-primary" data-chip><i data-lucide="calendar-clock" class="w-4 h-4 text-fg-gray"></i><span>Starts <time datetime="2026-12-28">Dec 28</time></span></span>
+        <a class="btn btn-outline ml-auto">Today</a>
+      </div>
+      <div class="flex flex-col items-start gap-4 md:flex-row">
+        <div class="w-full md:max-w-[300px] space-y-4">
+          <div class="h-[300px] bg-container rounded-xl shadow-border-xs p-8 relative">
+            <svg class="absolute inset-0 m-auto" width="236" height="236" viewBox="0 0 100 100" data-donut='[[8.9,"#e99537"],[35.4,"#c44fe9"],[14.3,"#6471eb"],[2.5,"#df4e92"],[4.6,"#4da568"],[34.3,"unused"]]'></svg>
+            <div class="relative h-full flex flex-col items-center justify-center">
+              <p class="flex items-center gap-1 text-sm font-medium text-primary mb-2" data-chip><i data-lucide="repeat" class="w-4 h-4 text-fg-gray"></i><span>Committed</span></p>
+              <p class="mb-2 text-3xl font-medium text-primary tabular-nums">$9,200.00</p>
+              <a class="text-sm text-secondary inline-flex items-center gap-1">of $14,000.00 <i data-lucide="pencil" class="w-4 h-4"></i></a>
+            </div>
+          </div>
+
+          <div class="bg-container rounded-xl shadow-border-xs p-4 space-y-3">
+            <h3 class="text-sm text-secondary flex items-center gap-1.5"><i data-lucide="repeat" class="w-4 h-4 text-fg-gray"></i><span>Recurring payments</span></h3>
+            <p class="tabular-nums"><span class="block text-xl font-medium text-primary">$9,200.00</span><span class="block text-sm text-secondary">committed to recurring payments</span></p>
+            <div class="flex h-1.5 gap-1"><div class="rounded-md h-1.5 bg-inverse" style="width:66%"></div><div class="rounded-md h-1.5 bg-surface-inset" style="width:34%"></div></div>
+            <p class="text-sm text-primary font-medium tabular-nums">66% of your budget</p>
+            <div class="px-3 py-2 rounded-xl flex items-center gap-3 bg-surface"><i data-lucide="chevron-right" class="w-5 h-5 text-fg-gray"></i><span class="font-medium text-sm text-primary">See details</span></div>
+          </div>
+
+          <div class="bg-container rounded-xl shadow-border-xs">
+            <div class="p-4 border-b border-secondary">
+              <h3 class="text-sm text-secondary mb-2">Expected income</h3>
+              <span class="inline-block text-xl font-medium text-primary tabular-nums">$32,000.00</span>
+            </div>
+            <div class="p-4">
+              <h3 class="text-sm text-secondary mb-2">Budgeted</h3>
+              <span class="inline-block mb-2 text-xl font-medium text-primary tabular-nums">$14,000.00</span>
+              <div class="flex h-1.5 mb-3 gap-1"><div class="rounded-md h-1.5 bg-inverse" style="width:66%"></div><div class="rounded-md h-1.5 bg-surface-inset" style="width:34%"></div></div>
+              <div class="flex justify-between text-sm tabular-nums"><p class="text-secondary">$9,200.00 committed</p><p class="font-medium text-primary text-right">$4,800.00 left</p></div>
+            </div>
+          </div>
+          <p class="chrome-label">NO BUDGETED / ACTUAL TABS IN THE FUTURE</p>
+        </div>
+
+        <div class="w-full grow bg-container rounded-xl shadow-border-xs p-4 min-w-0">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-medium">Categories</h2>
+            <a class="btn btn-secondary"><i data-lucide="settings-2" class="w-5 h-5"></i>Edit</a>
+          </div>
+          <div class="bg-container-inset rounded-xl p-1">
+            <div class="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-secondary uppercase"><p>Categories</p><span class="text-subdued">·</span><p>6</p><p class="ml-auto">Amount</p></div>
+            <div class="bg-container py-1 shadow-border-xs rounded-md" id="catlist"></div>
+          </div>
+        </div>
+      </div>
+    </figure>
+
+    <div class="grid gap-6 md:grid-cols-2 items-start">
+      <figure class="space-y-2 min-w-0">
+        <figcaption class="chrome-label">CATEGORY DRAWER · FUTURE (DECEMBER 2026, HOME)</figcaption>
+        <div class="frame-375 bg-container rounded-xl shadow-border-lg p-4 space-y-4">
+          <div><p class="text-sm text-secondary">Category</p><h3 class="text-2xl font-medium text-primary">Home</h3></div>
+          <div class="px-3 py-2 rounded-xl flex items-center justify-between bg-surface"><span class="font-medium text-xs uppercase text-secondary">Committed in December 2026</span><i data-lucide="chevron-down" class="w-5 h-5 text-fg-gray rotate-180"></i></div>
+          <div class="bg-container-inset rounded-xl p-1">
+            <h4 class="py-2 px-4 flex items-center justify-between font-medium text-xs text-secondary"><span class="uppercase">Dec 15 · 1</span><span class="tabular-nums">$3,500.00</span></h4>
+            <ul class="bg-container shadow-border-xs rounded-lg">
+              <li class="flex items-start gap-3 px-4 py-3" data-crow>
+                <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium uppercase shrink-0" style="background:color-mix(in oklab,#737373 10%,transparent);color:#737373">S</span>
+                <div class="min-w-0 grow"><p class="text-sm font-medium text-primary truncate">Sala</p><p class="text-xs text-secondary flex items-center gap-1"><i data-lucide="credit-card" class="w-3 h-3 text-fg-gray"></i><span>Installment 4 of 6</span></p></div>
+                <div class="text-right shrink-0"><p class="text-sm font-medium text-primary tabular-nums">$3,500.00</p><a href="#c3" class="text-xs font-medium text-primary hover:underline">View plan</a></div>
+              </li>
+            </ul>
+          </div>
+          <div class="bg-container-inset rounded-xl p-1">
+            <h4 class="py-2 px-4 flex items-center justify-between font-medium text-xs text-secondary"><span class="uppercase">Dec 20 · 1</span><span class="tabular-nums">$1,450.00</span></h4>
+            <ul class="bg-container shadow-border-xs rounded-lg">
+              <li class="flex items-start gap-3 px-4 py-3" data-crow>
+                <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium uppercase shrink-0" style="background:color-mix(in oklab,#737373 10%,transparent);color:#737373">R</span>
+                <div class="min-w-0 grow"><p class="text-sm font-medium text-primary truncate">Refrigerador LG</p><p class="text-xs text-secondary flex items-center gap-1"><i data-lucide="credit-card" class="w-3 h-3 text-fg-gray"></i><span>Installment 5 of 18</span></p></div>
+                <div class="text-right shrink-0"><p class="text-sm font-medium text-primary tabular-nums">$1,450.00</p><a href="#c3" class="text-xs font-medium text-primary hover:underline">View plan</a></div>
+              </li>
+            </ul>
+          </div>
+          <p class="chrome-label">EMPTY CATEGORY →</p>
+          <p class="text-secondary text-sm">Nothing committed in this category.</p>
+        </div>
+      </figure>
+
+      <figure class="space-y-2 min-w-0">
+        <figcaption class="chrome-label">SETUP (budgets/edit) · AUTOFILL FROM LAST CONFIGURED BUDGET</figcaption>
+        <div class="frame-375 bg-surface rounded-xl p-4 space-y-3">
+          <div class="text-center space-y-2"><h1 class="text-3xl text-primary font-medium">Setup your budget</h1><p class="text-secondary text-sm">Enter your monthly earnings and planned spending below to setup your budget.</p></div>
+          <label class="form-field"><span class="form-field__label">Budgeted spending</span><input class="form-field__input tabular-nums" value="$ 7,500.00"></label>
+          <div class="border border-tertiary rounded-lg p-3 flex items-start gap-2 bg-container">
+            <i data-lucide="sparkles" class="w-5 h-5 text-fg-gray"></i>
+            <div class="space-y-1 text-sm grow min-w-0">
+              <h4 class="text-primary">Start from your October 2026 budget</h4>
+              <p class="text-secondary">Copies October 2026's income, spending, and category amounts as a starting point. You can adjust anything after.</p>
+            </div>
+            <span class="w-9 h-5 rounded-full bg-surface-inset border border-secondary shrink-0"></span>
+          </div>
+          <p class="chrome-label">HORIZON LIMIT · CHEVRON DISABLED · aria-label/title = f.nav_next_disabled</p>
+          <span class="inline-flex w-8 h-8 items-center justify-center text-subdued" aria-disabled="true" aria-label="You can plan up to 12 months ahead." title="You can plan up to 12 months ahead."><i data-lucide="chevron-right" class="w-5 h-5"></i></span>
+        </div>
+      </figure>
+    </div>
+  </section>
+
+  <!-- =========================================================== CONTRAST -->
+  <section id="contrast" class="space-y-3 scroll-mt-20">
+    <p class="chrome-label">CONTRAST · WHY THE WARNING USES DS::Alert AND NOT text-warning</p>
+    <div class="grid gap-3 sm:grid-cols-3">
+      <div class="rounded-lg p-4" style="background:#FFF9F3"><p class="text-sm font-medium" style="color:#DC6803">text-warning on yellow-tint-5</p><p class="chrome-label mt-1">3.34:1 · FAILS AA (TEXT)</p></div>
+      <div class="rounded-lg p-4 border" style="background:#FFFAEB;border-color:#FEDF89"><p class="text-sm font-medium" style="color:#B54708">yellow-700 on yellow-50 (DS::Alert)</p><p class="chrome-label mt-1">5.20:1 · PASSES AA · DARK 8.92:1</p></div>
+      <div class="rounded-lg p-4 border" style="background:#FFFAEB;border-color:#FEDF89"><p class="text-sm" style="color:#737373">text-secondary on yellow-50</p><p class="chrome-label mt-1">4.54:1 · PASSES AA · DARK 6.13:1</p></div>
+    </div>
+    <p class="text-sm text-secondary">Full table in the visual spec, §9.</p>
+  </section>
+</main>
+
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>
+  document.querySelectorAll('[data-theme-set]').forEach(b => b.addEventListener('click', () => {
+    const v = b.dataset.themeSet;
+    if (v === 'system') document.documentElement.removeAttribute('data-theme');
+    else document.documentElement.setAttribute('data-theme', v);
+  }));
+
+  document.querySelectorAll('svg[data-donut]').forEach(svg => {
+    const segs = JSON.parse(svg.dataset.donut); const r = 42, c = 2 * Math.PI * r; let off = 0; const gap = 0.6;
+    segs.forEach(([pct, color]) => {
+      const len = Math.max(0, pct / 100 * c - gap);
+      const el = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      el.setAttribute('cx', 50); el.setAttribute('cy', 50); el.setAttribute('r', r); el.setAttribute('fill', 'none');
+      el.setAttribute('stroke-width', 5); el.setAttribute('stroke-linecap', 'round');
+      el.setAttribute('stroke', color === 'unused' ? 'var(--budget-unused-fill)' : color);
+      el.setAttribute('stroke-dasharray', `${len} ${c - len}`); el.setAttribute('stroke-dashoffset', -off);
+      el.setAttribute('transform', 'rotate(-90 50 50)'); svg.appendChild(el); off += pct / 100 * c;
+    });
+  });
+
+  const cats = [
+    ['Home', '#c44fe9', '$4,950.00', '$4,500.00', '$450.00 over', true],
+    ['Travel', '#6471eb', '$2,000.00', '$2,500.00', '$500.00 left'],
+    ['Shopping', '#e99537', '$1,250.00', '$1,500.00', '$250.00 left'],
+    ['Health', '#4da568', '$649.00', '$900.00', '$251.00 left'],
+    ['Entertainment', '#df4e92', '$351.00', '$600.00', '$249.00 left'],
+    ['Groceries', '#db5a54', '$0.00', '$4,000.00', '$4,000.00 left'],
+  ];
+  const num = s => parseFloat(s.replace(/[$,]/g, ''));
+  document.getElementById('catlist').innerHTML = cats.map(([n, col, com, bud, left, over], i) => `
+    <a href="#future" class="w-full p-4 flex items-center gap-3 bg-container" data-crow>
+      <span class="w-10 h-10 rounded-full shrink-0" style="background:conic-gradient(${col} 0 ${Math.min(100, num(com) / num(bud) * 100)}%, var(--budget-unused-fill) 0); -webkit-mask: radial-gradient(circle, transparent 13px, #000 14px); mask: radial-gradient(circle, transparent 13px, #000 14px);"></span>
+      <div class="min-w-0">
+        <p class="text-sm font-medium text-primary">${n}</p>
+        <p class="text-sm font-medium tabular-nums ${over ? '' : 'text-secondary'}" ${over ? 'style="color:#F13636"' : ''}>${left}</p>
+      </div>
+      <div class="ml-auto text-right tabular-nums">
+        <p class="text-sm font-medium text-primary">${com} committed</p>
+        <p class="text-sm text-secondary">from ${bud}</p>
+      </div>
+    </a>${i < cats.length - 1 ? '<hr class="border-divider mx-4">' : ''}`).join('');
+
+  lucide.createIcons();
+
+  // ---- Alignment audit (mockup QA, logs to console and window.__audit) ----
+  window.audit = function () {
+    const out = [];
+    const r = el => el.getBoundingClientRect();
+    // 1. Side-by-side field pairs: same top, same height, same input baseline
+    document.querySelectorAll('[data-pair]').forEach((pair, i) => {
+      const f = pair.querySelectorAll('.form-field');
+      if (f.length < 2) return;
+      const [a, b] = [r(f[0]), r(f[1])];
+      const [ia, ib] = [r(f[0].querySelector('input')), r(f[1].querySelector('input'))];
+      const sideBySide = Math.abs(a.top - b.top) < 1 || a.left !== b.left && Math.abs(a.top - b.top) < 40;
+      if (a.top === b.top || Math.abs(a.top - b.top) < 1) out.push({ check: 'pair' + i, dTop: +(a.top - b.top).toFixed(2), dH: +(a.height - b.height).toFixed(2), dInputTop: +(ia.top - ib.top).toFixed(2), dInputH: +(ia.height - ib.height).toFixed(2) });
+      else out.push({ check: 'pair' + i, stacked: true, dLeft: +(a.left - b.left).toFixed(2), dW: +(a.width - b.width).toFixed(2) });
+    });
+    // 2. Icon vertically centred on its text line (single-line flex rows), or aligned to first line
+    document.querySelectorAll('svg.lucide').forEach(svg => {
+      const p = svg.parentElement; const cs = getComputedStyle(p);
+      if (cs.display.includes('flex') && cs.alignItems === 'center') {
+        const t = [...p.children].find(c => c !== svg && c.tagName !== 'svg' && r(c).height > 0);
+        if (!t) return;
+        const lh = parseFloat(getComputedStyle(t).lineHeight) || r(t).height;
+        const first = r(t).top + Math.min(lh, r(t).height) / 2; const ic = r(svg).top + r(svg).height / 2;
+        const d = Math.abs(first - ic); if (d > 1) out.push({ check: 'icon-center', d: +d.toFixed(2), text: (t.textContent || '').trim().slice(0, 30) });
+      }
+      if (cs.display.includes('flex') && cs.alignItems === 'flex-start') {
+        const t = [...p.children].find(c => c !== svg && c.tagName !== 'svg' && r(c).height > 0);
+        if (!t) return;
+        const firstEl = (t.firstElementChild && getComputedStyle(t.firstElementChild).display === 'block') ? t.firstElementChild : t;
+        const lh = parseFloat(getComputedStyle(firstEl).lineHeight);
+        const lineMid = r(firstEl).top + lh / 2; const ic = r(svg).top + r(svg).height / 2;
+        const d = Math.abs(lineMid - ic); if (d > 1) out.push({ check: 'icon-firstline', d: +d.toFixed(2), text: (firstEl.textContent || '').trim().slice(0, 30) });
+      }
+    });
+    // 3. Summary: line 1 never wraps
+    document.querySelectorAll('[data-summary]').forEach((s, i) => {
+      const l1 = s.querySelector('.font-medium'); const lh = parseFloat(getComputedStyle(l1).lineHeight);
+      if (r(l1).height > lh + 1) out.push({ check: 'summary-wrap' + i, h: r(l1).height });
+    });
+    // 4. Amounts: right edges equal within a list
+    document.querySelectorAll('ul, #catlist').forEach((ul, i) => {
+      const am = [...ul.querySelectorAll('[data-crow] > :last-child')].map(e => r(e).right);
+      if (am.length > 1 && Math.max(...am) - Math.min(...am) > 0.5) out.push({ check: 'amount-right' + i, spread: Math.max(...am) - Math.min(...am) });
+    });
+    // 5. KPI cards same height in a row
+    document.querySelectorAll('[data-kpis]').forEach(dl => {
+      const cells = [...dl.children].map(c => r(c));
+      const rows = {}; cells.forEach(c => { const k = Math.round(c.top); (rows[k] = rows[k] || []).push(c.height); });
+      Object.values(rows).forEach(h => { if (Math.max(...h) - Math.min(...h) > 0.5) out.push({ check: 'kpi-height', h }); });
+    });
+    // 6. Horizontal overflow
+    if (document.documentElement.scrollWidth > window.innerWidth) out.push({ check: 'h-overflow', sw: document.documentElement.scrollWidth, w: window.innerWidth });
+    // 7. Radios: 16px and centred with their label text
+    document.querySelectorAll('label > input[type=radio]').forEach(rd => {
+      const t = rd.nextElementSibling; const a = r(rd), b = r(t);
+      if (Math.round(a.width) !== 16) out.push({ check: 'radio-size', w: a.width });
+      const d = Math.abs((a.top + a.height / 2) - (b.top + b.height / 2)); if (d > 1) out.push({ check: 'radio-center', d });
+    });
+    window.__audit = out; return out.length ? out : 'OK: no misalignment found at ' + window.innerWidth + 'px';
+  };
+</script>
+</body>
+</html>

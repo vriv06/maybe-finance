@@ -129,10 +129,16 @@ Rails.application.routes.draw do
   resources :transactions, only: %i[index new create show update destroy] do
     resource :transfer_match, only: %i[new create]
     resource :category, only: :update, controller: :transaction_categories
+    resource :recurrence, only: %i[show new create], module: :transactions
 
     collection do
       delete :clear_filter
     end
+  end
+
+  resources :recurring_transactions, only: %i[show update] do
+    get :preview, on: :collection
+    patch :stop, on: :member
   end
 
   resources :accountable_sparklines, only: :show, param: :accountable_type

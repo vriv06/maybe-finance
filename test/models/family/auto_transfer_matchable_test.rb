@@ -18,6 +18,17 @@ class Family::AutoTransferMatchableTest < ActiveSupport::TestCase
     end
   end
 
+  test "does not match installment plan transactions" do
+    create_transaction(date: Date.current, account: @depository, amount: 500)
+    create_transaction(date: Date.current, account: @credit_card, amount: -500, kind: "installment")
+    create_transaction(date: Date.current, account: @depository, amount: -700)
+    create_transaction(date: Date.current, account: @credit_card, amount: 700, kind: "msi_purchase")
+
+    assert_no_difference -> { Transfer.count } do
+      @family.auto_match_transfers!
+    end
+  end
+
   test "auto-matches multi-currency transfers" do
     load_exchange_prices
     create_transaction(date: 1.day.ago.to_date, account: @depository, amount: 500)
@@ -115,6 +126,20 @@ class Family::AutoTransferMatchableTest < ActiveSupport::TestCase
     assert_no_difference -> { Transfer.count } do
       @family.auto_match_transfers!
     end
+  end
+
+  test "does not match payments of an installments plan off a card" do
+    purchase = create_transaction(date: Date.current, account: @depository, amount: 1500, name: "Sofa")
+    RecurringTransaction.create_from_entry!(purchase, frequency: "monthly", total_payments: 3) # becomes payment 1 of $500
+    inflow = create_transaction(date: Date.current, account: @credit_card, amount: -500)
+
+    assert_no_difference -> { Transfer.count } do
+      @family.auto_match_transfers!
+    end
+
+    transfer = Transfer.new(inflow_transaction: inflow.entryable, outflow_transaction: purchase.reload.entryable)
+    assert_not transfer.valid?
+    assert_includes transfer.errors[:base], "This is part of a recurring payment, so it can't be a transfer."
   end
 
   private

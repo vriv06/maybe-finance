@@ -24,17 +24,17 @@ class IncomeStatement
     )
   end
 
-  def expense_totals(period: nil)
-    build_period_total(classification: "expense", period: period || current_cycle_period)
+  def expense_totals(period: nil, exclude_recurring: false)
+    build_period_total(classification: "expense", period: period || current_cycle_period, exclude_recurring: exclude_recurring)
   end
 
   def income_totals(period: nil)
     build_period_total(classification: "income", period: period || current_cycle_period)
   end
 
-  def median_expense(interval: "month", category: nil)
+  def median_expense(interval: "month", category: nil, exclude_recurring: false)
     if category.present?
-      category_stats(interval: interval).find { |stat| stat.classification == "expense" && stat.category_id == category.id }&.median || 0
+      category_stats(interval: interval, exclude_recurring: exclude_recurring).find { |stat| stat.classification == "expense" && stat.category_id == category.id }&.median || 0
     else
       family_stats(interval: interval).find { |stat| stat.classification == "expense" }&.median || 0
     end
@@ -66,8 +66,10 @@ class IncomeStatement
       Period.custom(start_date: start_date, end_date: end_date)
     end
 
-    def build_period_total(classification:, period:)
-      totals = totals_query(transactions_scope: family.transactions.visible.in_period(period)).select { |t| t.classification == classification }
+    def build_period_total(classification:, period:, exclude_recurring: false)
+      scope = family.transactions.visible.in_period(period)
+      scope = scope.where(recurring_transaction_id: nil) if exclude_recurring
+      totals = totals_query(transactions_scope: scope).select { |t| t.classification == classification }
       classification_total = totals.sum(&:total)
 
       uncategorized_category = family.categories.uncategorized
@@ -110,11 +112,11 @@ class IncomeStatement
       ]) { FamilyStats.new(family, interval:, cycle_offset: family.cycle_end_day).call }
     end
 
-    def category_stats(interval: "month")
+    def category_stats(interval: "month", exclude_recurring: false)
       @category_stats ||= {}
-      @category_stats[interval] ||= Rails.cache.fetch([
-        "income_statement", "category_stats", family.id, interval, family.cycle_end_day, family.entries_cache_version
-      ]) { CategoryStats.new(family, interval:, cycle_offset: family.cycle_end_day).call }
+      @category_stats[[ interval, exclude_recurring ]] ||= Rails.cache.fetch([
+        "income_statement", "category_stats", family.id, interval, family.cycle_end_day, exclude_recurring, family.entries_cache_version
+      ]) { CategoryStats.new(family, interval:, cycle_offset: family.cycle_end_day, exclude_recurring:).call }
     end
 
     def totals_query(transactions_scope:)

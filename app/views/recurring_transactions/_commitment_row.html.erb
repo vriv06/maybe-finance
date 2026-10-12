@@ -1,0 +1,36 @@
+<%# locals: (item:, avatar: true, account: false, view_plan: true, compact: false) %>
+
+<% plan = item.plan %>
+
+<div class="<%= class_names("flex items-start py-3", compact ? "gap-2 px-3" : "gap-3 px-4") %>">
+  <% if avatar %>
+    <%= render DS::FilledIcon.new(variant: :text, text: plan.name, size: "sm", rounded: true) %>
+  <% end %>
+
+  <div class="min-w-0 grow">
+    <p class="text-sm font-medium text-primary truncate"><%= plan.name %></p>
+    <p class="text-xs text-secondary flex items-start gap-1">
+      <%= icon recurring_icon(plan), size: "xs", class: "mt-0.5" %>
+      <span class="min-w-0">
+        <%= recurring_occurrence_label(plan, item.number) %>
+        <% if account %>
+          <span class="hidden lg:inline">
+            <span aria-hidden="true">·</span>
+            <%= link_to plan.account.name, account_path(plan.account, tab: "recurring"),
+                  class: "hover:underline", data: { turbo_frame: "_top" } %>
+          </span>
+        <% end %>
+      </span>
+    </p>
+  </div>
+
+  <div class="text-right shrink-0">
+    <p class="text-sm font-medium text-primary tabular-nums"><%= recurring_money(item.amount, plan.currency) %></p>
+    <% if view_plan %>
+      <%= link_to "View plan", recurring_transaction_path(plan),
+            class: "text-xs font-medium text-primary hover:underline",
+            aria: { label: "View plan for #{plan.name}" },
+            data: { turbo_frame: :modal } %>
+    <% end %>
+  </div>
+</div>

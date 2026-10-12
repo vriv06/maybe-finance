@@ -1,0 +1,99 @@
+{
+ "v": 3,
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-10-08T22:07:44Z"
+ },
+ "title": "Recurring payments screens",
+ "launch": {
+  "view": "canvas"
+ },
+ "pages": [],
+ "boards": {
+  "Main.dc.html": {
+   "x": 0,
+   "y": 0,
+   "w": 1280,
+   "h": 1971,
+   "expand": "fill",
+   "title": "B1\u2013B2 \u00b7 Capture"
+  },
+  "Convert.dc.html": {
+   "x": 1360,
+   "y": 0,
+   "w": 1280,
+   "h": 1155,
+   "expand": "fill",
+   "title": "B3 \u00b7 Convert existing"
+  },
+  "Rows.dc.html": {
+   "x": 2720,
+   "y": 0,
+   "w": 1280,
+   "h": 996,
+   "expand": "fill",
+   "title": "C1 \u00b7 Generated rows"
+  },
+  "Card.dc.html": {
+   "x": 0,
+   "y": 2091,
+   "w": 1280,
+   "h": 2019,
+   "expand": "fill",
+   "title": "C2 \u00b7 Credit card commitments"
+  },
+  "Dialogs.dc.html": {
+   "x": 1360,
+   "y": 2091,
+   "w": 1280,
+   "h": 704,
+   "expand": "fill",
+   "title": "C3 \u00b7 Stop / delete dialogs"
+  },
+  "Budget.dc.html": {
+   "x": 2720,
+   "y": 2091,
+   "w": 1280,
+   "h": 887,
+   "expand": "fill",
+   "title": "C4 \u00b7 Budget block + warning"
+  },
+  "Future.dc.html": {
+   "x": 0,
+   "y": 4230,
+   "w": 1280,
+   "h": 1900,
+   "expand": "fill",
+   "title": "Future budgets"
+  },
+  "Contrast.dc.html": {
+   "x": 1360,
+   "y": 4230,
+   "w": 1280,
+   "h": 199,
+   "expand": "fill",
+   "title": "Contrast checks"
+  },
+  "About.dc.html": {
+   "x": 2720,
+   "y": 4230,
+   "w": 1280,
+   "h": 253,
+   "expand": "fill",
+   "title": "About these mockups"
+  }
+ },
+ "order": [
+  "Main.dc.html",
+  "Convert.dc.html",
+  "Rows.dc.html",
+  "Card.dc.html",
+  "Dialogs.dc.html",
+  "Budget.dc.html",
+  "Future.dc.html",
+  "Contrast.dc.html",
+  "About.dc.html"
+ ],
+ "notes": {},
+ "designSystems": []
+}

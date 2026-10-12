@@ -3,6 +3,9 @@ class ApplicationController < ActionController::Base
           SelfHostable, StoreLocation, Impersonatable, Breadcrumbable,
           FeatureGuardable, Notifiable
 
+  # Separate include so its callback runs after Authentication (multi-arg include reverses order)
+  include RecurringGeneration
+
   include Pagy::Backend
 
   before_action :detect_os

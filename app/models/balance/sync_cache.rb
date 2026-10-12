@@ -19,7 +19,9 @@ class Balance::SyncCache
     attr_reader :account
 
     def converted_entries
-      @converted_entries ||= account.entries.order(:date).to_a.map do |e|
+      @converted_entries ||= account.entries.includes(:entryable).order(:date).to_a
+        .reject { |e| excluded_from_balance?(e) }
+        .map do |e|
         converted_entry = e.dup
         converted_entry.amount = converted_entry.amount_money.exchange_to(
           account.currency,
@@ -29,6 +31,10 @@ class Balance::SyncCache
         converted_entry.currency = account.currency
         converted_entry
       end
+    end
+
+    def excluded_from_balance?(entry)
+      entry.transaction? && Transaction::BALANCE_EXCLUDED_KINDS.include?(entry.entryable.kind)
     end
 
     def converted_holdings

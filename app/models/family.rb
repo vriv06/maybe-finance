@@ -32,6 +32,7 @@ class Family < ApplicationRecord
 
   has_many :budgets, dependent: :destroy
   has_many :budget_categories, through: :budgets
+  has_many :recurring_transactions, dependent: :destroy
 
   validates :locale, inclusion: { in: I18n.available_locales.map(&:to_s) }
   validates :date_format, inclusion: { in: DATE_FORMATS.map(&:last) }
@@ -119,6 +120,15 @@ class Family < ApplicationRecord
 
   def self_hoster?
     Rails.application.config.app_mode.self_hosted?
+  end
+
+  # Dates users see (generation, "today" in previews) follow the family's timezone, not the server's
+  def today
+    (Time.find_zone(timezone) || Time.zone).today
+  end
+
+  def recurring_commitments(start_date:, end_date:, **options)
+    RecurringCommitments.new(self, start_date: start_date, end_date: end_date, **options)
   end
 
   private
